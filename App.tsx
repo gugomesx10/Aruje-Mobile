@@ -9,7 +9,7 @@ export default function App() {
   return (
     <>
       {isAuthenticated ? (
-        <DashboardScreen />
+        <DashboardScreen onLogout={() => setIsAuthenticated(false)} />
       ) : (
         <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />
       )}
