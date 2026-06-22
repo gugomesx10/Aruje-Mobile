@@ -1,4 +1,6 @@
-export const API_BASE_URL = "http://localhost:8080";
+const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
 
-// Para testar no celular com Expo Go, troque temporariamente por localtunnel:
-// export const API_BASE_URL = "https://SUA_URL_LOCALTUNNEL_AQUI.loca.lt";
+export const API_BASE_URL =
+  apiBaseUrl && apiBaseUrl.trim().length > 0
+    ? apiBaseUrl
+    : "http://localhost:8080";
