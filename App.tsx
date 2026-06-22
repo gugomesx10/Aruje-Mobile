@@ -1,20 +1,20 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import { LoginScreen } from "./src/screens/LoginScreen";
+import { DashboardScreen } from "./src/screens/DashboardScreen";
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      {isAuthenticated ? (
+        <DashboardScreen />
+      ) : (
+        <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />
+      )}
+
+      <StatusBar style="dark" />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
