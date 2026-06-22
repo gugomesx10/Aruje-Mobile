@@ -8,11 +8,13 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-
+import { useNavigation } from "@react-navigation/native";
 import { getSensors, Sensor } from "../services/dashboardService";
 import { colors } from "../theme/colors";
 
 export function SensorsScreen() {
+  const navigation = useNavigation<any>();
+
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,7 +90,15 @@ export function SensorsScreen() {
             const sensorInfo = getSensorInfo(sensorType);
 
             return (
-              <View key={sensor.id} style={styles.card}>
+              <Pressable
+                key={sensor.id}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                onPress={() =>
+                  navigation.navigate("SensorDetails", {
+                    sensor,
+                  })
+                }
+              >
                 <View style={styles.cardHeader}>
                   <View style={styles.iconBox}>
                     <MaterialCommunityIcons
@@ -131,7 +141,7 @@ export function SensorsScreen() {
                     Criado em {new Date(sensor.createdAt).toLocaleString("pt-BR")}
                   </Text>
                 ) : null}
-              </View>
+              </Pressable>
             );
           })
         )}
@@ -316,6 +326,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
+  },
+  cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   cardHeader: {
     flexDirection: "row",

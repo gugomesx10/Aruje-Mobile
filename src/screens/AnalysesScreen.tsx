@@ -7,15 +7,15 @@ import {
   Text,
   View,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
-import {
-  AiAnalysis,
-  getAiAnalyses,
-} from "../services/dashboardService";
+import { AiAnalysis, getAiAnalyses } from "../services/dashboardService";
 import { colors } from "../theme/colors";
 
 export function AnalysesScreen() {
+  const navigation = useNavigation<any>();
+
   const [analyses, setAnalyses] = useState<AiAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,7 +94,18 @@ export function AnalysesScreen() {
             const risk = getRiskInfo(analysis.riskLevel);
 
             return (
-              <View key={analysis.id} style={styles.card}>
+              <Pressable
+                key={analysis.id}
+                style={({ pressed }) => [
+                  styles.card,
+                  pressed ? styles.cardPressed : null,
+                ]}
+                onPress={() =>
+                  navigation.navigate("AnalysisDetails", {
+                    analysis,
+                  })
+                }
+              >
                 <View style={styles.cardHeader}>
                   <View
                     style={[
@@ -106,7 +117,9 @@ export function AnalysesScreen() {
                   </View>
 
                   <View style={styles.cardTitleBox}>
-                    <Text style={styles.cardTitle}>Recomendação inteligente</Text>
+                    <Text style={styles.cardTitle}>
+                      Recomendação inteligente
+                    </Text>
                     <Text style={styles.date}>
                       {new Date(analysis.createdAt).toLocaleString("pt-BR")}
                     </Text>
@@ -157,7 +170,7 @@ export function AnalysesScreen() {
                     <Text style={styles.provider}>{analysis.provider}</Text>
                   </View>
                 </View>
-              </View>
+              </Pressable>
             );
           })
         )}
@@ -352,6 +365,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
+  },
+  cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   cardHeader: {
     flexDirection: "row",

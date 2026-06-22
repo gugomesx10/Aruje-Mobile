@@ -8,11 +8,13 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-
+import { useNavigation } from "@react-navigation/native";
 import { Alert as AlertModel, getAlerts } from "../services/dashboardService";
 import { colors } from "../theme/colors";
 
 export function AlertsScreen() {
+  const navigation = useNavigation<any>();
+
   const [alerts, setAlerts] = useState<AlertModel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,7 +96,15 @@ export function AlertsScreen() {
             const severity = getSeverityInfo(alert.severity);
 
             return (
-              <View key={alert.id} style={styles.card}>
+              <Pressable
+                key={alert.id}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                onPress={() =>
+                  navigation.navigate("AlertDetails", {
+                    alert,
+                  })
+                }
+              >
                 <View style={styles.cardHeader}>
                   <View
                     style={[
@@ -141,7 +151,7 @@ export function AlertsScreen() {
                     <Text style={styles.footerText}>Status: {alert.status}</Text>
                   </View>
                 </View>
-              </View>
+              </Pressable>
             );
           })
         )}
@@ -324,6 +334,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
+  },
+  cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   cardHeader: {
     flexDirection: "row",

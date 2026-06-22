@@ -9,6 +9,9 @@ import { ReadingsScreen } from "../screens/ReadingsScreen";
 import { AlertsScreen } from "../screens/AlertsScreen";
 import { AnalysesScreen } from "../screens/AnalysesScreen";
 import { ReadingDetailsScreen } from "../screens/ReadingDetailsScreen";
+import { AlertDetailsScreen } from "../screens/AlertDetailsScreen";
+import { AnalysisDetailsScreen } from "../screens/AnalysisDetailsScreen";
+import { SensorDetailsScreen } from "../screens/SensorDetailsScreen";
 import { colors } from "../theme/colors";
 
 const Tab = createBottomTabNavigator();
@@ -129,6 +132,18 @@ export function MainTabs({ onLogout }: Props) {
         <Stack.Screen
           name="ReadingDetails"
           component={ReadingDetailsScreen}
+        />
+        <Stack.Screen
+          name="AlertDetails"
+          component={AlertDetailsScreen}
+        />
+        <Stack.Screen
+          name="AnalysisDetails"
+          component={AnalysisDetailsScreen}
+        />
+        <Stack.Screen
+          name="SensorDetails"
+          component={SensorDetailsScreen}
         />
       </Stack.Navigator>
     </NavigationContainer>
