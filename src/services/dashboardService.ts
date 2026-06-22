@@ -34,6 +34,16 @@ export type HealthResponse = {
   status: string;
 };
 
+export type Sensor = {
+  id: string;
+  name?: string;
+  type?: string | number;
+  sensorType?: string | number;
+  description?: string | null;
+  isActive?: boolean;
+  createdAt?: string;
+};
+
 async function getArray<T>(url: string): Promise<T[]> {
   const response = await api.get<T[]>(url);
 
@@ -59,4 +69,8 @@ export async function getAiAnalyses() {
 export async function getApiHealth() {
   const response = await api.get<HealthResponse>("/health");
   return response.data;
+}
+
+export async function getSensors() {
+  return getArray<Sensor>("/api/sensors");
 }

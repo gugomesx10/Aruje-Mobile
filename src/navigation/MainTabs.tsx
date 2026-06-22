@@ -1,7 +1,7 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-
+import { SensorsScreen } from "../screens/SensorsScreen";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { ReadingsScreen } from "../screens/ReadingsScreen";
 import { AlertsScreen } from "../screens/AlertsScreen";
@@ -55,6 +55,20 @@ export function MainTabs({ onLogout }: Props) {
         >
           {() => <DashboardScreen onLogout={onLogout} />}
         </Tab.Screen>
+
+        <Tab.Screen
+          name="Sensores"
+          component={SensorsScreen}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <MaterialCommunityIcons
+                name={focused ? "access-point-network" : "access-point-network"}
+                color={color}
+                size={size}
+              />
+            ),
+          }}
+        />
 
         <Tab.Screen
           name="Leituras"
