@@ -14,9 +14,12 @@ import {
   getSensorReadings,
   SensorReading,
 } from "../services/dashboardService";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "../theme/colors";
 
 export function ReadingsScreen() {
+  const navigation = useNavigation<any>();
+
   const [readings, setReadings] = useState<SensorReading[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +83,16 @@ export function ReadingsScreen() {
             <ReadingsChartsSection readings={readings} />
 
             {readings.map((reading, index) => (
-              <View key={`${reading.id}-${index}`} style={styles.card}>
+              <Pressable
+                key={`${reading.id}-${index}`}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                onPress={() =>
+                  navigation.navigate("ReadingDetails", {
+                    reading,
+                    title: `Leitura #${readings.length - index}`,
+                  })
+                }
+              >
                 <View style={styles.cardHeader}>
                   <View style={styles.iconBox}>
                     <MaterialCommunityIcons
@@ -166,7 +178,7 @@ export function ReadingsScreen() {
                     value={formatValue(reading.luminosity, "lux")}
                   />
                 </View>
-              </View>
+              </Pressable>
             ))}
           </>
         )}
@@ -333,6 +345,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
+  },
+    cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   cardHeader: {
     flexDirection: "row",
