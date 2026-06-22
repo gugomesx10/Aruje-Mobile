@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -7,6 +7,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+
 import {
   AiAnalysis,
   Alert,
@@ -96,100 +98,145 @@ export function DashboardScreen({ onLogout }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>Arujé Mobile</Text>
-          <Text style={styles.title}>Painel</Text>
-          <Text style={styles.subtitle}>Resumo da lavoura inteligente.</Text>
+      <View style={styles.page}>
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <Text style={styles.eyebrow}>Arujé Mobile</Text>
+            <Text style={styles.title}>Olá, Produtor!</Text>
+            <Text style={styles.subtitle}>
+              Resumo inteligente da sua lavoura.
+            </Text>
+          </View>
+
+          <Pressable style={styles.logoutIconButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={22} color={colors.primary} />
+          </Pressable>
         </View>
 
-        <Pressable style={styles.refreshButton} onPress={loadDashboard}>
-          <Text style={styles.refreshButtonText}>Atualizar</Text>
-        </Pressable>
-      </View>
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <View>
+              <Text style={styles.heroLabel}>Saúde do sistema</Text>
+              <Text style={styles.heroValue}>{apiStatus}</Text>
+            </View>
 
-      <View style={styles.grid}>
-        <MetricCard
-          label="Temperatura"
-          value={formatValue(latestReading?.temperature, "°C")}
-          status={getTemperatureStatus(latestReading?.temperature)}
-        />
+            <View style={styles.onlinePill}>
+              <Ionicons name="pulse" size={14} color={colors.primaryDark} />
+              <Text style={styles.onlinePillText}>
+                {apiStatus === "Healthy" ? "Online" : "Verificar"}
+              </Text>
+            </View>
+          </View>
 
-        <MetricCard
-          label="Umidade do ar"
-          value={formatValue(latestReading?.airHumidity, "%")}
-          status="Normal"
-        />
-
-        <MetricCard
-          label="Umidade do solo"
-          value={formatValue(latestReading?.soilMoisture, "%")}
-          status={getSoilStatus(latestReading?.soilMoisture)}
-        />
-
-        <MetricCard
-          label="Luminosidade"
-          value={formatValue(latestReading?.luminosity, "lux")}
-          status="Monitorado"
-        />
-      </View>
-
-      <View style={styles.systemCard}>
-        <View>
-          <Text style={styles.cardLabel}>Saúde da API</Text>
-          <Text style={styles.systemValue}>{apiStatus}</Text>
-        </View>
-
-        <View style={styles.statusPill}>
-          <Text style={styles.statusPillText}>
-            {apiStatus === "Healthy" ? "Online" : "Verificar"}
+          <Text style={styles.heroDescription}>
+            API conectada, autenticação ativa e dados IoT sincronizados.
           </Text>
         </View>
-      </View>
 
-      <View style={styles.summaryRow}>
-        <SummaryCard label="Leituras" value={readings.length.toString()} />
-        <SummaryCard label="Alertas" value={alerts.length.toString()} />
-        <SummaryCard label="Análises IA" value={analyses.length.toString()} />
-      </View>
+        <View style={styles.grid}>
+          <MetricCard
+            icon={
+              <MaterialCommunityIcons
+                name="thermometer"
+                size={24}
+                color={colors.primary}
+              />
+            }
+            label="Temperatura"
+            value={formatValue(latestReading?.temperature, "°C")}
+            status={getTemperatureStatus(latestReading?.temperature)}
+          />
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Última análise com IA</Text>
+          <MetricCard
+            icon={
+              <Ionicons name="water-outline" size={24} color={colors.primary} />
+            }
+            label="Umidade do ar"
+            value={formatValue(latestReading?.airHumidity, "%")}
+            status="Normal"
+          />
+
+          <MetricCard
+            icon={
+              <MaterialCommunityIcons
+                name="sprout"
+                size={24}
+                color={colors.primary}
+              />
+            }
+            label="Umidade do solo"
+            value={formatValue(latestReading?.soilMoisture, "%")}
+            status={getSoilStatus(latestReading?.soilMoisture)}
+          />
+
+          <MetricCard
+            icon={
+              <Ionicons name="sunny-outline" size={24} color={colors.warning} />
+            }
+            label="Luminosidade"
+            value={formatValue(latestReading?.luminosity, "lux")}
+            status="Monitorado"
+          />
+        </View>
+
+        <View style={styles.summaryRow}>
+          <SummaryCard label="Leituras" value={readings.length.toString()} />
+          <SummaryCard label="Alertas" value={alerts.length.toString()} />
+          <SummaryCard label="Análises IA" value={analyses.length.toString()} />
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Última análise com IA</Text>
+
+          <Pressable onPress={loadDashboard}>
+            <Text style={styles.refreshText}>Atualizar</Text>
+          </Pressable>
+        </View>
 
         {latestAnalysis ? (
           <View style={styles.analysisCard}>
-            <Text style={styles.riskLevel}>{latestAnalysis.riskLevel}</Text>
-            <Text style={styles.analysisReason}>{latestAnalysis.reason}</Text>
-            <Text style={styles.analysisRecommendation}>
-              {latestAnalysis.recommendation}
-            </Text>
-            <Text style={styles.provider}>{latestAnalysis.provider}</Text>
+            <View style={styles.analysisIcon}>
+              <Ionicons name="sparkles" size={22} color={colors.primary} />
+            </View>
+
+            <View style={styles.analysisContent}>
+              <Text style={styles.riskLevel}>{latestAnalysis.riskLevel}</Text>
+
+              <Text style={styles.analysisReason}>
+                {latestAnalysis.reason}
+              </Text>
+
+              <Text style={styles.analysisRecommendation}>
+                {latestAnalysis.recommendation}
+              </Text>
+
+              <Text style={styles.provider}>{latestAnalysis.provider}</Text>
+            </View>
           </View>
         ) : (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>
-              Nenhuma análise gerada ainda. Gere dados pelo Wokwi para visualizar.
+              Nenhuma análise gerada ainda. Rode o Wokwi para visualizar.
             </Text>
           </View>
         )}
       </View>
-
-      <Pressable style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Sair</Text>
-      </Pressable>
     </ScrollView>
   );
 }
 
 type MetricCardProps = {
+  icon: ReactNode;
   label: string;
   value: string;
   status: string;
 };
 
-function MetricCard({ label, value, status }: MetricCardProps) {
+function MetricCard({ icon, label, value, status }: MetricCardProps) {
   return (
     <View style={styles.metricCard}>
+      <View style={styles.metricIcon}>{icon}</View>
+
       <Text style={styles.cardLabel}>{label}</Text>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricStatus}>{status}</Text>
@@ -253,8 +300,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    padding: 20,
+    padding: 18,
     paddingBottom: 40,
+  },
+  page: {
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
   },
   loadingContainer: {
     flex: 1,
@@ -268,39 +320,89 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   header: {
-    marginTop: 24,
-    marginBottom: 24,
+    marginTop: 18,
+    marginBottom: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
+  headerText: {
+    flex: 1,
+  },
   eyebrow: {
     color: colors.primary,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 4,
   },
   title: {
-    fontSize: 34,
-    fontWeight: "800",
+    fontSize: 32,
+    fontWeight: "900",
     color: colors.primaryDark,
   },
   subtitle: {
-    marginTop: 6,
+    marginTop: 5,
     fontSize: 15,
     color: colors.muted,
   },
-  refreshButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
+  logoutIconButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  refreshButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
+  heroCard: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: 28,
+    padding: 22,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  heroLabel: {
+    color: "#DCE8D8",
     fontSize: 13,
+    fontWeight: "700",
+  },
+  heroValue: {
+    marginTop: 6,
+    color: "#FFFFFF",
+    fontSize: 30,
+    fontWeight: "900",
+  },
+  heroDescription: {
+    marginTop: 16,
+    color: "#E9F1E5",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  onlinePill: {
+    backgroundColor: "#DDEED8",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  onlinePillText: {
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: "900",
   },
   grid: {
     flexDirection: "row",
@@ -309,8 +411,9 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: "48%",
+    minHeight: 160,
     backgroundColor: colors.surface,
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
@@ -320,15 +423,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
+  metricIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
   cardLabel: {
     fontSize: 13,
     color: colors.muted,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   metricValue: {
-    marginTop: 10,
-    fontSize: 25,
-    fontWeight: "800",
+    marginTop: 8,
+    fontSize: 24,
+    fontWeight: "900",
     color: colors.text,
   },
   metricStatus: {
@@ -341,73 +453,68 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: "hidden",
     fontSize: 12,
-    fontWeight: "700",
-  },
-  systemCard: {
-    marginTop: 16,
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  systemValue: {
-    marginTop: 8,
-    fontSize: 25,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  statusPill: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  statusPillText: {
-    color: colors.primaryDark,
-    fontWeight: "800",
-    fontSize: 12,
+    fontWeight: "900",
   },
   summaryRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
     marginTop: 16,
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: colors.primaryDark,
-    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderRadius: 22,
     padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   summaryValue: {
-    color: "#FFFFFF",
-    fontSize: 25,
-    fontWeight: "800",
+    color: colors.primaryDark,
+    fontSize: 26,
+    fontWeight: "900",
   },
   summaryLabel: {
-    color: "#DCE8D8",
-    marginTop: 6,
+    color: colors.muted,
+    marginTop: 5,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  section: {
+  sectionHeader: {
     marginTop: 24,
+    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "900",
     color: colors.text,
-    marginBottom: 12,
+  },
+  refreshText: {
+    color: colors.primary,
+    fontWeight: "900",
+    fontSize: 13,
   },
   analysisCard: {
     backgroundColor: colors.surface,
-    borderRadius: 24,
+    borderRadius: 26,
     padding: 18,
     borderWidth: 1,
     borderColor: colors.border,
+    flexDirection: "row",
+    gap: 14,
+  },
+  analysisIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  analysisContent: {
+    flex: 1,
   },
   riskLevel: {
     alignSelf: "flex-start",
@@ -417,14 +524,14 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 999,
     overflow: "hidden",
-    fontWeight: "800",
+    fontWeight: "900",
     fontSize: 12,
   },
   analysisReason: {
-    marginTop: 14,
+    marginTop: 12,
     fontSize: 16,
     color: colors.text,
-    fontWeight: "700",
+    fontWeight: "900",
     lineHeight: 22,
   },
   analysisRecommendation: {
@@ -437,7 +544,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 12,
     color: colors.primary,
-    fontWeight: "700",
+    fontWeight: "900",
   },
   emptyCard: {
     backgroundColor: colors.surface,
@@ -450,19 +557,5 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20,
-  },
-  logoutButton: {
-    marginTop: 24,
-    height: 52,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoutText: {
-    color: colors.primary,
-    fontWeight: "800",
-    fontSize: 15,
   },
 });
