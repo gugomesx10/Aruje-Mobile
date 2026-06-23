@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,13 +9,17 @@ import {
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
+import { ReadingsChartsSection } from "../components/ReadingsChartsSection";
 import {
   getSensorReadings,
   SensorReading,
 } from "../services/dashboardService";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "../theme/colors";
 
 export function ReadingsScreen() {
+  const navigation = useNavigation<any>();
+
   const [readings, setReadings] = useState<SensorReading[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,9 +30,7 @@ export function ReadingsScreen() {
       const data = await getSensorReadings();
 
       const ordered = [...data].sort(
-        (a, b) =>
-          new Date(b.createdAt ?? b.readingDate).getTime() -
-          new Date(a.createdAt ?? a.readingDate).getTime()
+        (a, b) => getReadingTime(b) - getReadingTime(a)
       );
 
       setReadings(ordered);
@@ -66,7 +68,7 @@ export function ReadingsScreen() {
         ) : readings.length === 0 ? (
           <View style={styles.emptyCard}>
             <MaterialCommunityIcons
-              name="sprout-outline"
+              name="sprout"
               size={34}
               color={colors.primary}
             />
@@ -77,82 +79,108 @@ export function ReadingsScreen() {
             </Text>
           </View>
         ) : (
-          readings.map((reading, index) => (
-            <View key={reading.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.iconBox}>
-                  <MaterialCommunityIcons
-                    name="access-point-network"
-                    size={22}
-                    color={colors.primary}
+          <>
+            <ReadingsChartsSection readings={readings} />
+
+            {readings.map((reading, index) => (
+              <Pressable
+                key={`${reading.id}-${index}`}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                onPress={() =>
+                  navigation.navigate("ReadingDetails", {
+                    reading,
+                    title: `Leitura #${readings.length - index}`,
+                  })
+                }
+              >
+                <View style={styles.cardHeader}>
+                  <View style={styles.iconBox}>
+                    <MaterialCommunityIcons
+                      name="access-point-network"
+                      size={22}
+                      color={colors.primary}
+                    />
+                  </View>
+
+                  <View style={styles.cardTitleBox}>
+                    <Text style={styles.cardTitle}>
+                      Leitura #{readings.length - index}
+                    </Text>
+
+                    <Text style={styles.date}>
+                      {formatDate(reading.createdAt ?? reading.readingDate)}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.statusPill,
+                      isCritical(reading) && styles.statusPillDanger,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        isCritical(reading) && styles.statusPillTextDanger,
+                      ]}
+                    >
+                      {isCritical(reading) ? "Risco" : "Normal"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.grid}>
+                  <Metric
+                    icon={
+                      <MaterialCommunityIcons
+                        name="thermometer"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    }
+                    label="Temperatura"
+                    value={formatValue(reading.temperature, "°C")}
+                  />
+
+                  <Metric
+                    icon={
+                      <Ionicons
+                        name="water-outline"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    }
+                    label="Umidade ar"
+                    value={formatValue(reading.airHumidity, "%")}
+                  />
+
+                  <Metric
+                    icon={
+                      <MaterialCommunityIcons
+                        name="sprout"
+                        size={20}
+                        color={colors.primary}
+                      />
+                    }
+                    label="Umidade solo"
+                    value={formatValue(reading.soilMoisture, "%")}
+                  />
+
+                  <Metric
+                    icon={
+                      <Ionicons
+                        name="sunny-outline"
+                        size={20}
+                        color={colors.warning}
+                      />
+                    }
+                    label="Luminosidade"
+                    value={formatValue(reading.luminosity, "lux")}
                   />
                 </View>
-
-                <View style={styles.cardTitleBox}>
-                  <Text style={styles.cardTitle}>Leitura #{readings.length - index}</Text>
-                  <Text style={styles.date}>
-                    {formatDate(reading.createdAt ?? reading.readingDate)}
-                  </Text>
-                </View>
-
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusPillText}>
-                    {isCritical(reading) ? "Risco" : "Normal"}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.grid}>
-                <Metric
-                  icon={
-                    <MaterialCommunityIcons
-                      name="thermometer"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  }
-                  label="Temperatura"
-                  value={formatValue(reading.temperature, "°C")}
-                />
-
-                <Metric
-                  icon={
-                    <Ionicons
-                      name="water-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  }
-                  label="Umidade ar"
-                  value={formatValue(reading.airHumidity, "%")}
-                />
-
-                <Metric
-                  icon={
-                    <MaterialCommunityIcons
-                      name="sprout"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  }
-                  label="Umidade solo"
-                  value={formatValue(reading.soilMoisture, "%")}
-                />
-
-                <Metric
-                  icon={
-                    <Ionicons
-                      name="sunny-outline"
-                      size={20}
-                      color={colors.warning}
-                    />
-                  }
-                  label="Luminosidade"
-                  value={formatValue(reading.luminosity, "lux")}
-                />
-              </View>
-            </View>
-          ))
+              </Pressable>
+            ))}
+          </>
         )}
       </View>
     </ScrollView>
@@ -160,7 +188,7 @@ export function ReadingsScreen() {
 }
 
 type MetricProps = {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 };
@@ -170,12 +198,24 @@ function Metric({ icon, label, value }: MetricProps) {
     <View style={styles.metric}>
       <View style={styles.metricIcon}>{icon}</View>
 
-      <View>
+      <View style={styles.metricTextBox}>
         <Text style={styles.metricLabel}>{label}</Text>
         <Text style={styles.metricValue}>{value}</Text>
       </View>
     </View>
   );
+}
+
+function getReadingTime(reading: SensorReading) {
+  const dateValue = reading.createdAt ?? reading.readingDate;
+
+  if (!dateValue) {
+    return 0;
+  }
+
+  const time = new Date(dateValue).getTime();
+
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function formatValue(value?: number | null, suffix?: string) {
@@ -190,8 +230,18 @@ function formatValue(value?: number | null, suffix?: string) {
   return `${Number(value).toFixed(1)} ${suffix}`;
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleString("pt-BR");
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "--";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
+
+  return date.toLocaleString("pt-BR");
 }
 
 function isCritical(reading: SensorReading) {
@@ -296,6 +346,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
   },
+    cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
+  },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -328,10 +382,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
+  statusPillDanger: {
+    backgroundColor: "#FCE4DE",
+  },
   statusPillText: {
     color: colors.primaryDark,
     fontSize: 12,
     fontWeight: "900",
+  },
+  statusPillTextDanger: {
+    color: colors.danger,
   },
   grid: {
     marginTop: 16,
@@ -355,6 +415,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
+  },
+  metricTextBox: {
+    flex: 1,
   },
   metricLabel: {
     fontSize: 12,
