@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { MainTabs } from "./src/navigation/MainTabs";
 import { getToken } from "./src/storage/authStorage";
+import { syncPushTokenWithApi } from "./src/services/pushNotifications";
 import { colors } from "./src/theme/colors";
 
 export default function App() {
@@ -25,6 +26,10 @@ export default function App() {
     }
 
     loadStoredToken();
+
+    syncPushTokenWithApi().catch((error) => {
+      console.error("Erro ao sincronizar token de push:", error);
+    });
   }, []);
 
   if (loadingAuth) {
