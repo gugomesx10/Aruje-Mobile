@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,225 +11,391 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 import {
   askRagAssistant,
   RagAskResponse,
   RagSourceResponse,
 } from "../services/ragService";
-import { useNavigation } from "@react-navigation/native";
 import { colors } from "../theme/colors";
 
-const DEFAULT_QUESTION = "Por que minha lavoura está em risco?";
+type ChatMessage = {
+  id: string;
+  role: "assistant" | "user";
+  text: string;
+  response?: RagAskResponse;
+};
+
+const INITIAL_MESSAGES: ChatMessage[] = [
+  {
+    id: "welcome-1",
+    role: "assistant",
+    text:
+      "Olá! Eu sou a Arujé IA, seu assistente virtual de monitoramento agrícola. " +
+      "Posso te ajudar a entender alertas, riscos da lavoura, sensores e recomendações.",
+  },
+  {
+    id: "welcome-2",
+    role: "assistant",
+    text:
+      "Você pode escrever do seu jeito, mesmo sem saber o termo técnico. " +
+      "Eu consulto os dados do Arujé e te explico de forma mais simples.",
+  },
+];
+
+const SUGGESTED_QUESTIONS = [
+  "Olá, tudo bem?",
+  "Estou com dificuldade de entender os alertas, pode me ajudar?",
+  "Tem algum alerta grave agora?",
+  "Explique de forma simples o que aconteceu.",
+  "O que eu devo fazer agora?",
+];
 
 export function RagAssistantScreen() {
   const navigation = useNavigation<any>();
-  const [question, setQuestion] = useState(DEFAULT_QUESTION);
-  const [response, setResponse] = useState<RagAskResponse | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function handleAsk() {
-    const trimmedQuestion = question.trim();
+  useEffect(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  }, [messages, loading]);
 
-    if (trimmedQuestion.length < 5) {
-      setErrorMessage("Digite uma pergunta com pelo menos 5 caracteres.");
-      return;
-    }
+  async function handleAsk(customQuestion?: string) {
+  const selectedQuestion = (customQuestion ?? question).trim();
 
-    try {
-      setLoading(true);
-      setErrorMessage(null);
-
-      const result = await askRagAssistant(trimmedQuestion, 8);
-
-      setResponse(result);
-    } catch (error) {
-      console.error(error);
-
-      setErrorMessage(
-        "Não foi possível consultar o assistente agora. Verifique se a API está online e tente novamente."
-      );
-    } finally {
-      setLoading(false);
-    }
+  if (selectedQuestion.length < 2 || loading) {
+    return;
   }
 
-  function getRiskStyle(riskLevel?: string) {
-    const normalizedRisk = riskLevel?.toLowerCase();
+  const userMessage: ChatMessage = {
+    id: `user-${Date.now()}`,
+    role: "user",
+    text: selectedQuestion,
+  };
 
-    if (normalizedRisk === "alto") {
-      return styles.riskHigh;
-    }
+  setMessages((current) => [...current, userMessage]);
+  setQuestion("");
 
-    if (normalizedRisk === "médio" || normalizedRisk === "medio") {
-      return styles.riskMedium;
-    }
+  const conversationalAnswer = getConversationalAnswer(selectedQuestion);
 
-    if (normalizedRisk === "baixo") {
-      return styles.riskLow;
-    }
+  if (conversationalAnswer) {
+    const assistantMessage: ChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: "assistant",
+      text: conversationalAnswer,
+    };
 
-    return styles.riskUnknown;
+    setTimeout(() => {
+      setMessages((current) => [...current, assistantMessage]);
+    }, 300);
+
+    return;
   }
+
+  setLoading(true);
+
+  try {
+    const result = await askRagAssistant(selectedQuestion, 8);
+
+    const assistantMessage: ChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: "assistant",
+      text: buildFriendlyAnswer(result),
+      response: result,
+    };
+
+    setMessages((current) => [...current, assistantMessage]);
+  } catch (error) {
+    console.error(error);
+
+    const errorMessage: ChatMessage = {
+      id: `assistant-error-${Date.now()}`,
+      role: "assistant",
+      text:
+        "Não consegui consultar os dados agora. Verifique se a API está online e tente novamente.",
+    };
+
+    setMessages((current) => [...current, errorMessage]);
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <View style={styles.header}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back" size={20} color="#0F172A" />
+        </TouchableOpacity>
+
+        <View style={styles.avatar}>
+          <Ionicons name="sparkles" size={22} color="#FFFFFF" />
+        </View>
+
+        <View style={styles.headerTextBox}>
+          <Text style={styles.title}>Arujé IA</Text>
+          <Text style={styles.subtitle}>Atendimento virtual agrícola</Text>
+        </View>
+      </View>
+
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        ref={scrollRef}
+        style={styles.chat}
+        contentContainerStyle={styles.chatContent}
         keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity
-        activeOpacity={0.8}
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-        >
-            <Ionicons name="chevron-back" size={20} color="#0F172A" />
-            <Text style={styles.backButtonText}>Voltar</Text>
-        </TouchableOpacity>
-        <View style={styles.header}>
-          <View style={styles.iconBox}>
-            <Ionicons name="sparkles" size={26} color="#FFFFFF" />
-          </View>
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
 
-          <View style={styles.headerTextBox}>
-            <Text style={styles.title}>Arujé IA</Text>
-            <Text style={styles.subtitle}>
-              Pergunte sobre riscos, alertas, sensores e recomendações da
-              lavoura.
-            </Text>
-          </View>
-        </View>
+        {messages.length === INITIAL_MESSAGES.length ? (
+          <View style={styles.suggestionsBox}>
+            <Text style={styles.suggestionsTitle}>Você pode perguntar:</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Pergunta</Text>
-
-          <TextInput
-            value={question}
-            onChangeText={setQuestion}
-            placeholder="Ex: Por que minha lavoura está em risco?"
-            placeholderTextColor="#94A3B8"
-            multiline
-            textAlignVertical="top"
-            style={styles.input}
-          />
-
-          {errorMessage ? (
-            <View style={styles.errorBox}>
-              <Ionicons
-                name="alert-circle-outline"
-                size={18}
-                color="#B91C1C"
-              />
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </View>
-          ) : null}
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleAsk}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="send" size={18} color="#FFFFFF" />
-                <Text style={styles.buttonText}>Perguntar ao assistente</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {response ? (
-          <View style={styles.responseCard}>
-            <View style={styles.responseHeader}>
-              <Text style={styles.responseTitle}>Resposta inteligente</Text>
-
-              <View style={[styles.riskBadge, getRiskStyle(response.riskLevel)]}>
-                <Text style={styles.riskBadgeText}>{response.riskLevel}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.answerText}>{response.answer}</Text>
-
-            <View style={styles.recommendationBox}>
-              <View style={styles.recommendationHeader}>
-                <Ionicons name="leaf-outline" size={20} color={colors.primary} />
-                <Text style={styles.recommendationTitle}>Recomendação</Text>
-              </View>
-
-              <Text style={styles.recommendationText}>
-                {response.recommendation}
-              </Text>
-            </View>
-
-            <View style={styles.metaBox}>
-              <Text style={styles.metaText}>Provider: {response.provider}</Text>
-              <Text style={styles.metaText}>
-                Gerado em: {formatDate(response.generatedAt)}
-              </Text>
-            </View>
-
-            <Text style={styles.sourcesTitle}>Fontes usadas pelo RAG</Text>
-
-            {response.sources.map((source) => (
-              <SourceCard key={`${source.type}-${source.id}`} source={source} />
+            {SUGGESTED_QUESTIONS.map((suggestion) => (
+              <TouchableOpacity
+                key={suggestion}
+                activeOpacity={0.85}
+                style={styles.suggestionButton}
+                onPress={() => handleAsk(suggestion)}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={17}
+                  color={colors.primary}
+                />
+                <Text style={styles.suggestionText}>{suggestion}</Text>
+              </TouchableOpacity>
             ))}
           </View>
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="chatbubbles-outline"
-              size={34}
-              color={colors.muted}
-            />
-            <Text style={styles.emptyTitle}>Faça uma pergunta</Text>
-            <Text style={styles.emptyText}>
-              O assistente vai consultar leituras, alertas e análises IA do
-              banco para responder com contexto real.
-            </Text>
+        ) : null}
+
+        {loading ? (
+          <View style={styles.assistantRow}>
+            <View style={styles.smallAvatar}>
+              <Ionicons name="sparkles" size={15} color="#FFFFFF" />
+            </View>
+
+            <View style={styles.typingBubble}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={styles.typingText}>Arujé IA analisando dados...</Text>
+            </View>
           </View>
-        )}
+        ) : null}
       </ScrollView>
+
+      <View style={styles.composer}>
+        <TextInput
+          value={question}
+          onChangeText={setQuestion}
+          placeholder="Digite sua dúvida..."
+          placeholderTextColor="#94A3B8"
+          multiline
+          style={styles.input}
+        />
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.sendButton, loading && styles.sendButtonDisabled]}
+          onPress={() => handleAsk()}
+          disabled={loading}
+        >
+          <Ionicons name="send" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
-function SourceCard({ source }: { source: RagSourceResponse }) {
-  return (
-    <View style={styles.sourceCard}>
-      <View style={styles.sourceHeader}>
-        <View style={styles.sourceTypeBox}>
-          <Text style={styles.sourceType}>{source.type}</Text>
-        </View>
+function MessageBubble({ message }: { message: ChatMessage }) {
+  const isUser = message.role === "user";
 
-        <Text style={styles.sourceScore}>
-          Score {source.relevanceScore.toFixed(0)}
-        </Text>
+  if (isUser) {
+    return (
+      <View style={styles.userRow}>
+        <View style={styles.userBubble}>
+          <Text style={styles.userText}>{message.text}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.assistantRow}>
+      <View style={styles.smallAvatar}>
+        <Ionicons name="sparkles" size={15} color="#FFFFFF" />
       </View>
 
-      <Text style={styles.sourceTitle}>{source.title}</Text>
-      <Text style={styles.sourceSummary}>{source.summary}</Text>
+      <View style={styles.assistantBubble}>
+        <Text style={styles.assistantText}>{message.text}</Text>
 
-      <Text style={styles.sourceDate}>{formatDate(source.createdAt)}</Text>
+        {message.response ? (
+          <View style={styles.responseDetails}>
+            <View style={[styles.riskBadge, getRiskStyle(message.response.riskLevel)]}>
+              <Text style={styles.riskBadgeText}>
+                Risco {message.response.riskLevel}
+              </Text>
+            </View>
+
+            <View style={styles.recommendationBox}>
+              <Text style={styles.recommendationTitle}>Recomendação</Text>
+              <Text style={styles.recommendationText}>
+                {message.response.recommendation}
+              </Text>
+            </View>
+
+            <Text style={styles.sourcesTitle}>Fontes consultadas</Text>
+
+            {message.response.sources.slice(0, 2).map((source) => (
+              <SourceItem
+                key={`${source.type}-${source.id}`}
+                source={source}
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-function formatDate(value: string) {
-  const date = new Date(value);
+function SourceItem({ source }: { source: RagSourceResponse }) {
+  return (
+    <View style={styles.sourceItem}>
+      <View style={styles.sourceHeader}>
+        <Text style={styles.sourceType}>{source.type}</Text>
+        <Text style={styles.sourceScore}>Score {source.relevanceScore}</Text>
+      </View>
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
+      <Text style={styles.sourceTitle}>{source.title}</Text>
+      <Text style={styles.sourceSummary}>{source.summary}</Text>
+    </View>
+  );
+}
+
+function buildFriendlyAnswer(response: RagAskResponse) {
+  const mainSource = response.sources[0];
+
+  if (!mainSource) {
+    return (
+      "Analisei os dados disponíveis, mas não encontrei informações suficientes " +
+      "para dar uma resposta segura agora."
+    );
   }
 
-  return date.toLocaleString("pt-BR");
+  return (
+    `Encontrei um nível de risco ${response.riskLevel.toLowerCase()} na lavoura. ` +
+    `O principal ponto identificado foi: ${mainSource.title}. ` +
+    "Abaixo deixei a recomendação e as principais fontes usadas para essa análise."
+  );
+}
+
+function getConversationalAnswer(question: string) {
+  const normalizedQuestion = normalizeText(question);
+
+  if (
+    containsAny(
+      normalizedQuestion,
+      "oi",
+      "ola",
+      "olá",
+      "tudo bem",
+      "bom dia",
+      "boa tarde",
+      "boa noite",
+      "eai",
+      "e ai"
+    )
+  ) {
+    return (
+      "Olá! Tudo bem? Eu sou a Arujé IA. " +
+      "Estou aqui para te ajudar a entender sua lavoura de forma simples. " +
+      "Você pode me perguntar sobre alertas, riscos, sensores ou o que fazer agora."
+    );
+  }
+
+  if (
+    containsAny(
+      normalizedQuestion,
+      "preciso de ajuda",
+      "pode me ajudar",
+      "estou com dificuldade",
+      "nao entendi",
+      "não entendi",
+      "explica melhor",
+      "me ajuda",
+      "tenho dificuldade"
+    )
+  ) {
+    return (
+      "Claro, eu te ajudo. Pode escrever do seu jeito, mesmo sem usar termos técnicos. " +
+      "Por exemplo, você pode perguntar: “tem algum alerta grave?”, “o que eu faço agora?” " +
+      "ou “explique de forma simples o que aconteceu”."
+    );
+  }
+
+  if (
+    containsAny(
+      normalizedQuestion,
+      "o que voce faz",
+      "o que você faz",
+      "como voce funciona",
+      "como você funciona",
+      "quem e voce",
+      "quem é você"
+    )
+  ) {
+    return (
+      "Eu sou um assistente virtual do Arujé. " +
+      "Eu consulto os dados do sistema, como leituras IoT, alertas e análises inteligentes, " +
+      "para explicar o que está acontecendo com a lavoura e sugerir uma ação."
+    );
+  }
+
+  return null;
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function containsAny(text: string, ...terms: string[]) {
+  return terms.some((term) => text.includes(normalizeText(term)));
+}
+
+function getRiskStyle(riskLevel?: string) {
+  const normalizedRisk = riskLevel?.toLowerCase();
+
+  if (normalizedRisk === "alto") {
+    return styles.riskHigh;
+  }
+
+  if (normalizedRisk === "médio" || normalizedRisk === "medio") {
+    return styles.riskMedium;
+  }
+
+  if (normalizedRisk === "baixo") {
+    return styles.riskLow;
+  }
+
+  return styles.riskUnknown;
 }
 
 const styles = StyleSheet.create({
@@ -237,23 +403,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 120,
-  },
   header: {
+    paddingTop: 18,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
-    gap: 14,
+    gap: 12,
   },
-  iconBox: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -262,110 +436,137 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.muted,
-    fontWeight: "600",
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#0F172A",
-    marginBottom: 10,
-  },
-  input: {
-    minHeight: 110,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: "#FFFFFF",
-    padding: 14,
-    fontSize: 15,
-    color: "#0F172A",
-    fontWeight: "600",
-    lineHeight: 22,
-  },
-  button: {
-    marginTop: 14,
-    height: 52,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 10,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  errorBox: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: "#FEE2E2",
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-  },
-  errorText: {
-    flex: 1,
-    color: "#B91C1C",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  responseCard: {
-    marginTop: 18,
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  responseHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 14,
-  },
-  responseTitle: {
-    flex: 1,
     fontSize: 20,
     fontWeight: "900",
     color: "#0F172A",
   },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  chat: {
+    flex: 1,
+  },
+  chatContent: {
+    width: "100%",
+    maxWidth: 920,
+    alignSelf: "center",
+    padding: 18,
+    paddingBottom: 24,
+  },
+  assistantRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 14,
+    gap: 9,
+  },
+  userRow: {
+    alignItems: "flex-end",
+    marginBottom: 14,
+  },
+  smallAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  assistantBubble: {
+    flex: 1,
+    maxWidth: "82%",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    padding: 14,
+},
+  userBubble: {
+    maxWidth: "72%",
+    backgroundColor: colors.primary,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    padding: 14,
+  },
+  assistantText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#334155",
+    fontWeight: "600",
+  },
+  userText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  suggestionsBox: {
+    marginTop: 4,
+    marginLeft: 39,
+    marginBottom: 18,
+    gap: 8,
+  },
+  suggestionsTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 2,
+  },
+  suggestionButton: {
+    alignSelf: "flex-start",
+    maxWidth: "96%",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  suggestionText: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  typingBubble: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  typingText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.muted,
+  },
+  responseDetails: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   riskBadge: {
+    alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
+    marginBottom: 12,
   },
   riskHigh: {
     backgroundColor: "#DC2626",
@@ -384,144 +585,101 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900",
   },
-  answerText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: "#334155",
-    fontWeight: "600",
-  },
   recommendationBox: {
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 18,
     backgroundColor: "#ECFDF5",
     borderWidth: 1,
     borderColor: "#BBF7D0",
-  },
-  recommendationHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 14,
   },
   recommendationTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "900",
     color: "#065F46",
+    marginBottom: 5,
   },
   recommendationText: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "700",
     color: "#047857",
-    fontWeight: "700",
-  },
-  metaBox: {
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: colors.muted,
-    fontWeight: "700",
   },
   sourcesTitle: {
-    marginTop: 18,
-    marginBottom: 10,
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: "900",
     color: "#0F172A",
+    marginBottom: 8,
   },
-  sourceCard: {
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
+  sourceItem: {
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 10,
+    borderRadius: 14,
+    padding: 11,
+    marginBottom: 8,
   },
   sourceHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
     gap: 10,
-  },
-  sourceTypeBox: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: "#EEF2FF",
+    marginBottom: 5,
   },
   sourceType: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900",
-    color: "#4338CA",
+    color: colors.primary,
   },
   sourceScore: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     color: colors.muted,
   },
   sourceTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "900",
     color: "#0F172A",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   sourceSummary: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: "#475569",
-    fontWeight: "600",
-  },
-  sourceDate: {
-    marginTop: 8,
     fontSize: 12,
-    fontWeight: "700",
-    color: colors.muted,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: "#475569",
   },
-  emptyState: {
-    marginTop: 18,
-    padding: 22,
-    borderRadius: 24,
+  composer: {
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    padding: 12,
+    paddingBottom: Platform.OS === "ios" ? 26 : 12,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    maxHeight: 110,
+    minHeight: 46,
+    borderRadius: 22,
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-  },
-  emptyTitle: {
-    marginTop: 10,
-    fontSize: 18,
-    fontWeight: "900",
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: "600",
     color: "#0F172A",
   },
-  emptyText: {
-    marginTop: 6,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.muted,
-    fontWeight: "600",
-    textAlign: "center",
+  sendButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  backButton: {
-  alignSelf: "flex-start",
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 6,
-  marginBottom: 16,
-  paddingVertical: 8,
-  paddingHorizontal: 12,
-  borderRadius: 999,
-  backgroundColor: "#FFFFFF",
-  borderWidth: 1,
-  borderColor: colors.border,
-},
-backButtonText: {
-fontSize: 14,
-fontWeight: "900",
-color: "#0F172A",
-},
+  sendButtonDisabled: {
+    opacity: 0.65,
+  },
 });
