@@ -16,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import {
   askRagAssistant,
   RagAskResponse,
+  RagConversationMessageRequest,
   RagSourceResponse,
 } from "../services/ragService";
 import { colors } from "../theme/colors";
@@ -73,6 +74,8 @@ export function RagAssistantScreen() {
     return;
   }
 
+  const conversationHistory = buildConversationHistory(messages);
+
   const userMessage: ChatMessage = {
     id: `user-${Date.now()}`,
     role: "user",
@@ -81,27 +84,14 @@ export function RagAssistantScreen() {
 
   setMessages((current) => [...current, userMessage]);
   setQuestion("");
-
-  const conversationalAnswer = getConversationalAnswer(selectedQuestion);
-
-  if (conversationalAnswer) {
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: "assistant",
-      text: conversationalAnswer,
-    };
-
-    setTimeout(() => {
-      setMessages((current) => [...current, assistantMessage]);
-    }, 300);
-
-    return;
-  }
-
   setLoading(true);
 
   try {
-    const result = await askRagAssistant(selectedQuestion, 8);
+    const result = await askRagAssistant(
+      selectedQuestion,
+      conversationHistory,
+      8
+    );
 
     const assistantMessage: ChatMessage = {
       id: `assistant-${Date.now()}`,
@@ -242,7 +232,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <View style={styles.assistantBubble}>
         <Text style={styles.assistantText}>{message.text}</Text>
 
-        {message.response ? (
+        {message.response && message.response.sources.length > 0 ? (
           <View style={styles.responseDetails}>
             <View style={[styles.riskBadge, getRiskStyle(message.response.riskLevel)]}>
               <Text style={styles.riskBadgeText}>
@@ -272,6 +262,32 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
+function buildConversationHistory(
+  messages: ChatMessage[]
+): RagConversationMessageRequest[] {
+  return messages
+    .filter((message) => !message.id.startsWith("welcome-"))
+    .filter((message) => message.text.trim().length > 0)
+    .slice(-6)
+    .map((message) => ({
+      role: message.role,
+      content: truncateText(
+        message.response?.answer ?? message.text,
+        1000
+      ),
+    }));
+}
+
+function truncateText(value: string, maxLength: number) {
+  const cleanValue = value.trim();
+
+  if (cleanValue.length <= maxLength) {
+    return cleanValue;
+  }
+
+  return cleanValue.slice(0, maxLength).trim();
+}
+
 function SourceItem({ source }: { source: RagSourceResponse }) {
   return (
     <View style={styles.sourceItem}>
@@ -287,20 +303,7 @@ function SourceItem({ source }: { source: RagSourceResponse }) {
 }
 
 function buildFriendlyAnswer(response: RagAskResponse) {
-  const mainSource = response.sources[0];
-
-  if (!mainSource) {
-    return (
-      "Analisei os dados disponíveis, mas não encontrei informações suficientes " +
-      "para dar uma resposta segura agora."
-    );
-  }
-
-  return (
-    `Encontrei um nível de risco ${response.riskLevel.toLowerCase()} na lavoura. ` +
-    `O principal ponto identificado foi: ${mainSource.title}. ` +
-    "Abaixo deixei a recomendação e as principais fontes usadas para essa análise."
-  );
+  return response.answer;
 }
 
 function getConversationalAnswer(question: string) {
