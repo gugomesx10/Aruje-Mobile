@@ -1,14 +1,49 @@
 # Arujé Mobile
 
-Aplicativo mobile do **Arujé**, uma plataforma de monitoramento agrícola inteligente que conecta dados de sensores IoT, alertas automatizados e análises inteligentes para apoiar a tomada de decisão no campo.
+Aplicativo mobile do **Arujé**, uma plataforma de monitoramento agrícola inteligente que conecta dados de sensores IoT, alertas automatizados, análises inteligentes e assistente virtual com RAG para apoiar a tomada de decisão no campo.
 
-O app foi desenvolvido com **React Native + Expo + TypeScript** e consome a API do projeto **Arujé Back-End**, exibindo informações reais de sensores, leituras, alertas e análises geradas a partir do processamento dos dados.
+O app foi desenvolvido com **React Native + Expo + TypeScript** e consome a API do projeto **Arujé Back-End**, exibindo informações reais de sensores, leituras, alertas, análises e respostas geradas pela **Arujé IA**.
+
+---
+
+## Status atual
+
+Versão atual:
+
+```text
+v1.0.3
+```
+
+Status do projeto:
+
+```text
+MVP funcional com integração mobile, IoT, alertas, análises IA e assistente RAG.
+```
+
+Funcionalidades concluídas:
+
+* Login com API
+* Autenticação JWT
+* Persistência de sessão
+* Dashboard com dados reais
+* Tela de sensores
+* Tela de leituras IoT
+* Tela de alertas
+* Tela de análises inteligentes
+* Navegação inferior
+* Configuração de URL por ambiente
+* Integração com o back-end Arujé
+* Chat com assistente virtual Arujé IA
+* Envio de histórico de conversa para o RAG
+* Exibição de fontes consultadas pelo RAG
+* Exibição de risco e recomendação quando houver análise agrícola
 
 ---
 
 ## Visão geral
 
 O **Arujé Mobile** é a interface mobile da solução Arujé.
+
 Ele permite que o usuário acompanhe, de forma visual e simples, o estado da lavoura monitorada por sensores IoT.
 
 A aplicação exibe:
@@ -21,15 +56,16 @@ A aplicação exibe:
 * Leituras IoT recentes
 * Alertas gerados automaticamente
 * Análises inteligentes com recomendação
+* Assistente virtual agrícola com RAG
 * Navegação inferior entre telas
 
 ---
 
 ## Objetivo do projeto
 
-O objetivo do Arujé Mobile é complementar o back-end da plataforma, criando uma experiência visual para o usuário final.
+O objetivo do Arujé Mobile é complementar o back-end da plataforma, criando uma experiência visual e acessível para o usuário final.
 
-Enquanto o back-end recebe e processa os dados agrícolas, o mobile apresenta essas informações de forma acessível, permitindo acompanhar rapidamente:
+Enquanto o back-end recebe e processa os dados agrícolas, o mobile apresenta essas informações de forma simples, permitindo acompanhar rapidamente:
 
 * Temperatura
 * Umidade do ar
@@ -39,6 +75,7 @@ Enquanto o back-end recebe e processa os dados agrícolas, o mobile apresenta es
 * Alertas ativos
 * Análises inteligentes
 * Recomendações automáticas
+* Explicações em linguagem natural com a Arujé IA
 
 ---
 
@@ -57,15 +94,18 @@ Outbox Pattern
      ↓
 RabbitMQ
      ↓
-Worker
+Worker Service
      ↓
 Alertas + Análises IA
      ↓
 Arujé Mobile
+     ↓
+Arujé IA / RAG / Gemini
 ```
 
 O mobile não se comunica diretamente com o Wokwi.
-Ele consome os dados já processados pela API.
+
+Ele consome os dados já processados pela API e envia perguntas para o endpoint RAG do back-end.
 
 ---
 
@@ -88,6 +128,8 @@ Ele consome os dados já processados pela API.
 * JWT Bearer Token
 * Variáveis de ambiente com `EXPO_PUBLIC_`
 * Consumo de endpoints protegidos
+* Consumo de endpoint RAG
+* Envio de histórico de conversa para o back-end
 
 ### Back-end consumido
 
@@ -99,6 +141,8 @@ Ele consome os dados já processados pela API.
 * Swagger
 * Prometheus
 * Grafana
+* Gemini API
+* RAG
 * Wokwi/ESP32 para simulação IoT
 
 ---
@@ -121,7 +165,9 @@ Funcionalidades da autenticação:
 
 ### Painel principal
 
-A tela principal exibe um resumo da lavoura inteligente:
+A tela principal exibe um resumo da lavoura inteligente.
+
+Ela mostra:
 
 * Saúde da API
 * Temperatura mais recente
@@ -197,13 +243,166 @@ Cada análise possui:
 * Provider da análise
 * Data de criação
 
-Atualmente, o projeto utiliza um provider simulado baseado em regras:
+No fluxo automático do Worker, o projeto utiliza um provider baseado em regras:
 
 ```text
 RuleBased-Mock
 ```
 
-Esse modelo permite demonstrar o comportamento de uma análise inteligente sem depender de uma API externa de IA.
+Esse modelo permite demonstrar o comportamento de uma análise inteligente sem depender de uma API externa de IA para o processamento assíncrono principal.
+
+---
+
+## Arujé IA
+
+A partir da versão `v1.0.3`, o aplicativo possui uma tela de chat com a **Arujé IA**, um assistente virtual agrícola integrado ao back-end.
+
+A Arujé IA permite que o usuário faça perguntas em linguagem natural sobre a lavoura.
+
+Exemplos:
+
+```text
+Por que minha lavoura está em risco?
+Tem algum alerta grave agora?
+O que eu devo fazer agora?
+Explique de forma simples o que aconteceu.
+Estou com dificuldade de entender os alertas, pode me ajudar?
+```
+
+---
+
+## Como funciona o chat com RAG
+
+O chat do mobile envia a pergunta do usuário para o endpoint:
+
+```http
+POST /api/rag/ask
+```
+
+O back-end então:
+
+```text
+Recebe a pergunta
+        ↓
+Classifica a intenção
+        ↓
+Busca dados relevantes no banco
+        ↓
+Monta o contexto do RAG
+        ↓
+Inclui histórico recente da conversa
+        ↓
+Envia para Gemini
+        ↓
+Retorna resposta, nível de risco, recomendação e fontes
+        ↓
+Mobile exibe a resposta de forma amigável
+```
+
+---
+
+## Histórico de conversa
+
+O mobile envia o histórico recente da conversa para o back-end por meio do campo `conversationHistory`.
+
+Isso permite que o usuário faça perguntas de continuação, como:
+
+```text
+E agora?
+O que eu faço?
+Isso é grave?
+E esse alerta?
+```
+
+Exemplo de payload enviado pelo mobile:
+
+```json
+{
+  "question": "E agora, o que eu faço?",
+  "maxItems": 8,
+  "conversationHistory": [
+    {
+      "role": "user",
+      "content": "Por que minha lavoura está em risco?"
+    },
+    {
+      "role": "assistant",
+      "content": "Sua lavoura está em risco por temperatura elevada e baixa umidade do solo."
+    }
+  ]
+}
+```
+
+---
+
+## Respostas do assistente
+
+A resposta do endpoint RAG pode conter:
+
+* `answer`
+* `riskLevel`
+* `recommendation`
+* `provider`
+* `sources`
+* `generatedAt`
+
+Exemplo de resposta:
+
+```json
+{
+  "question": "Por que minha lavoura está em risco?",
+  "answer": "Sua lavoura está em risco por causa da temperatura elevada e da baixa umidade do solo.",
+  "riskLevel": "Alto",
+  "recommendation": "Verifique a plantação e avalie a necessidade de irrigação.",
+  "provider": "Gemini-RAG",
+  "sources": [
+    {
+      "type": "Alert",
+      "id": "guid",
+      "title": "Risco de estresse hídrico",
+      "summary": "Alerta registrado com temperatura elevada e baixa umidade do solo.",
+      "relevanceScore": 16,
+      "createdAt": "2026-06-26T17:22:48.040842Z"
+    }
+  ],
+  "generatedAt": "2026-06-26T17:32:13.8615225Z"
+}
+```
+
+---
+
+## Providers do RAG
+
+O mobile pode receber respostas de diferentes providers:
+
+```text
+Gemini-RAG
+Aruje-Intent-RuleBased
+RuleBased-RAG
+```
+
+Significado:
+
+```text
+Gemini-RAG
+→ Resposta gerada pela Gemini com base no contexto recuperado pelo back-end.
+
+Aruje-Intent-RuleBased
+→ Resposta direta do classificador de intenção, usada para saudações, ajuda e perguntas simples.
+
+RuleBased-RAG
+→ Fallback local do back-end quando a Gemini não está configurada ou falha.
+```
+
+Quando a resposta possui fontes consultadas, o mobile exibe:
+
+* Nível de risco
+* Recomendação
+* Fontes utilizadas
+* Score de relevância
+* Resumo da fonte
+
+Quando a resposta é apenas conversacional, como `oi` ou `me ajuda`, o mobile exibe apenas o texto da resposta.
 
 ---
 
@@ -224,12 +423,14 @@ Aruje-Mobile/
 │   │   ├── SensorsScreen.tsx
 │   │   ├── ReadingsScreen.tsx
 │   │   ├── AlertsScreen.tsx
-│   │   └── AnalysesScreen.tsx
+│   │   ├── AnalysesScreen.tsx
+│   │   └── RagAssistantScreen.tsx
 │   │
 │   ├── services/
 │   │   ├── api.ts
 │   │   ├── authService.ts
-│   │   └── dashboardService.ts
+│   │   ├── dashboardService.ts
+│   │   └── ragService.ts
 │   │
 │   ├── storage/
 │   │   └── authStorage.ts
@@ -323,9 +524,37 @@ Escaneie o QR Code exibido no terminal
 
 ---
 
+## Rodando no navegador com Expo Web
+
+Para rodar diretamente no navegador:
+
+```bash
+npx expo start --web
+```
+
+Ou limpando o cache:
+
+```bash
+npx expo start -c --web
+```
+
+Por padrão, o Expo Web pode abrir em:
+
+```text
+http://localhost:8081
+```
+
+A API continua rodando separadamente em:
+
+```text
+http://localhost:8080
+```
+
+---
+
 ## Rodando com a API local
 
-Para testar no navegador usando o Expo Web, a variável pode apontar para:
+Para testar no navegador usando Expo Web, a variável pode apontar para:
 
 ```env
 EXPO_PUBLIC_API_BASE_URL=http://localhost:8080
@@ -375,7 +604,11 @@ Reinicie o Expo limpando o cache:
 npx expo start -c
 ```
 
-Importante: a URL gerada pelo LocalTunnel é temporária e não deve ser commitada.
+Importante:
+
+```text
+A URL gerada pelo LocalTunnel é temporária e não deve ser commitada.
+```
 
 ---
 
@@ -392,6 +625,7 @@ GET  /api/sensors
 GET  /api/sensor-readings
 GET  /api/alerts
 GET  /api/ai-analyses
+POST /api/rag/ask
 ```
 
 A autenticação é feita via JWT.
@@ -453,6 +687,10 @@ Sistema gera alerta quando necessário
 Sistema gera análise inteligente
         ↓
 Mobile exibe os dados processados
+        ↓
+Usuário pergunta para a Arujé IA
+        ↓
+Back-end responde usando RAG
 ```
 
 ---
@@ -509,6 +747,21 @@ Lista as análises inteligentes e recomendações geradas a partir dos alertas.
 
 ---
 
+### Arujé IA
+
+Tela de chat com o assistente virtual agrícola.
+
+Permite perguntar em linguagem natural sobre:
+
+* Alertas
+* Riscos da lavoura
+* Sensores
+* Leituras recentes
+* Recomendações
+* Próximas ações
+
+---
+
 ## Visual e identidade
 
 O app utiliza uma identidade visual inspirada no contexto agrícola.
@@ -521,6 +774,7 @@ Principais características:
 * Navegação inferior
 * Ícones temáticos
 * Interface focada em leitura rápida dos dados
+* Chat com visual amigável e acessível
 
 ---
 
@@ -538,10 +792,28 @@ Rodar Expo:
 npx expo start
 ```
 
+Rodar no navegador:
+
+```bash
+npx expo start --web
+```
+
 Rodar limpando cache:
 
 ```bash
 npx expo start -c
+```
+
+Rodar no navegador limpando cache:
+
+```bash
+npx expo start -c --web
+```
+
+Validar TypeScript:
+
+```bash
+npx tsc --noEmit
 ```
 
 Instalar dependência compatível com Expo:
@@ -558,15 +830,112 @@ git status
 
 ---
 
+## Testes sugeridos do mobile
+
+### Teste 1 — Login
+
+1. Abrir o app
+2. Informar usuário demo
+3. Entrar no sistema
+4. Confirmar que as telas protegidas aparecem
+
+Usuário demo:
+
+```text
+E-mail: gustavo@aruje.com
+Senha: Aruje123@
+```
+
+---
+
+### Teste 2 — Dashboard
+
+1. Abrir o painel principal
+2. Verificar saúde da API
+3. Conferir cards de temperatura, umidade, luminosidade, alertas e análises
+
+---
+
+### Teste 3 — Leituras IoT
+
+1. Rodar Wokwi
+2. Enviar leitura para a API
+3. Abrir tela de leituras
+4. Confirmar que a nova leitura aparece
+
+---
+
+### Teste 4 — Alertas e análises
+
+1. Enviar uma leitura crítica
+2. Aguardar o Worker processar
+3. Abrir tela de alertas
+4. Abrir tela de análises
+5. Confirmar que alerta e análise foram gerados
+
+---
+
+### Teste 5 — Arujé IA / Saudação
+
+No chat, enviar:
+
+```text
+oi
+```
+
+Resultado esperado:
+
+```text
+Resposta simples do assistente.
+Não deve exibir risco, recomendação ou fontes.
+```
+
+---
+
+### Teste 6 — Arujé IA / Pergunta com RAG
+
+No chat, enviar:
+
+```text
+Por que minha lavoura está em risco?
+```
+
+Resultado esperado:
+
+```text
+Resposta gerada pelo RAG.
+Deve exibir nível de risco, recomendação e fontes consultadas.
+```
+
+---
+
+### Teste 7 — Arujé IA / Continuação com histórico
+
+Depois da pergunta anterior, enviar:
+
+```text
+E agora, o que eu faço?
+```
+
+Resultado esperado:
+
+```text
+O assistente deve entender que a pergunta se refere ao risco anterior.
+A resposta deve considerar o histórico recente da conversa.
+```
+
+---
+
 ## Git Flow
 
 O projeto segue um fluxo baseado em branches:
 
 ```text
-main      → versão estável
-develop   → desenvolvimento
-feature/* → novas funcionalidades
-release/* → preparação de release
+main        → versão estável
+develop     → desenvolvimento
+feature/*   → novas funcionalidades
+release/*   → preparação de release
+hotfix/*     → correções urgentes
 ```
 
 Exemplo de criação de feature:
@@ -581,14 +950,15 @@ Commit:
 
 ```bash
 git add .
-git commit -m "feat: descrição da funcionalidade"
+git commit -m "feat: descricao da funcionalidade"
 ```
 
 Merge na develop:
 
 ```bash
 git checkout develop
-git merge feature/nome-da-feature
+git pull origin develop
+git merge --no-ff feature/nome-da-feature -m "merge: nome da feature"
 git push origin develop
 ```
 
@@ -596,50 +966,176 @@ git push origin develop
 
 ## Releases
 
-Para criar uma release:
+Exemplo de criação de release:
 
 ```bash
 git checkout develop
-git checkout -b release/v1.0.0
+git pull origin develop
+git checkout -b release/v1.0.3
+npx tsc --noEmit
+git push origin release/v1.0.3
 ```
 
 Merge na main:
 
 ```bash
 git checkout main
-git merge release/v1.0.0
+git pull origin main
+git merge --no-ff release/v1.0.3 -m "release: v1.0.3 mobile"
 git push origin main
 ```
 
 Criar tag:
 
 ```bash
-git tag -a v1.0.0 -m "Release mobile MVP"
-git push origin v1.0.0
+git tag -a v1.0.3 -m "v1.0.3 - Mobile com historico de conversa no RAG"
+git push origin v1.0.3
+```
+
+Voltar a release para develop:
+
+```bash
+git checkout develop
+git merge --no-ff release/v1.0.3 -m "merge: release v1.0.3 em develop"
+git push origin develop
 ```
 
 ---
 
-## Status do projeto
+## Histórico de versões
 
-Status atual:
+### v1.0.3
 
-```text
-MVP funcional concluído
+Principais entregas:
+
+* Chat Arujé IA atualizado
+* Envio de histórico real da conversa para o back-end
+* Integração com endpoint `POST /api/rag/ask`
+* Exibição direta do `answer` retornado pela API
+* Exibição de fontes apenas quando houver resposta RAG
+* Correção para respostas conversacionais sem fontes
+* Integração com RAG avançado do back-end
+
+### v1.0.2
+
+Principais entregas:
+
+* Primeira versão da tela Arujé IA
+* Botão flutuante para acesso ao chat
+* Integração inicial com o RAG
+* Exibição de fontes, risco e recomendação
+* Tratamento local inicial para mensagens conversacionais
+
+### v1.0.1
+
+Principais entregas:
+
+* Melhorias de integração com back-end
+* Ajustes visuais
+* Correções de navegação
+* Refinamentos nas telas principais
+
+### v1.0.0
+
+Principais entregas:
+
+* MVP inicial do aplicativo
+* Login com API
+* Sessão persistida
+* Dashboard
+* Sensores
+* Leituras
+* Alertas
+* Análises IA
+* Navegação inferior
+* Configuração por ambiente
+
+---
+
+## Solução de problemas
+
+### App não conecta na API
+
+Verifique o `.env.local`:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://localhost:8080
 ```
 
-Funcionalidades concluídas:
+Teste a API:
 
-* Login com API
-* Persistência de sessão
-* Dashboard com dados reais
-* Tela de sensores
-* Tela de leituras
-* Tela de alertas
-* Tela de análises IA
-* Navegação inferior
-* Configuração de URL por ambiente
-* Integração com o back-end Arujé
+```bash
+curl http://localhost:8080/health
+```
+
+Reinicie o Expo limpando cache:
+
+```bash
+npx expo start -c
+```
+
+---
+
+### Celular não acessa localhost
+
+Em celular físico, `localhost` aponta para o próprio celular, não para o computador.
+
+Use LocalTunnel:
+
+```bash
+npx localtunnel --port 8080
+```
+
+Depois configure:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=https://sua-url-temporaria.loca.lt
+```
+
+---
+
+### Alterei o .env.local e não mudou
+
+Reinicie o Expo limpando cache:
+
+```bash
+npx expo start -c
+```
+
+---
+
+### Erro de TypeScript
+
+Validar o projeto:
+
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### Chat não responde
+
+Verifique:
+
+* API está online
+* Endpoint `/api/rag/ask` responde no Swagger
+* `EXPO_PUBLIC_API_BASE_URL` está correto
+* Token JWT está válido, caso a rota esteja protegida
+* Back-end está com containers rodando
+
+---
+
+### RAG não usa Gemini
+
+Verifique no back-end:
+
+* `GEMINI_API_KEY`
+* `GEMINI_MODEL`
+* Logs da API
+* Resposta do endpoint `/api/rag/ask`
+
+Se a Gemini falhar, o back-end pode responder usando fallback.
 
 ---
 
@@ -660,6 +1156,10 @@ Possíveis melhorias futuras:
 * Deploy mobile com EAS
 * Build Android
 * Build iOS
+* Histórico persistido do chat
+* Sugestões inteligentes no chat
+* Filtros no chat por período ou sensor
+* Tela de detalhes das fontes usadas pelo RAG
 
 ---
 
@@ -667,7 +1167,9 @@ Possíveis melhorias futuras:
 
 Desenvolvido por **Gustavo Gomes**.
 
-Projeto criado para fins acadêmicos, estudo de arquitetura, integração mobile e composição de portfólio na área de desenvolvimento de software.
+GitHub: [@gugomesx10](https://github.com/gugomesx10)
+
+Projeto criado para fins acadêmicos, estudo de arquitetura, integração mobile, IoT, mensageria, observabilidade, inteligência artificial e composição de portfólio na área de desenvolvimento de software.
 
 ---
 
