@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,6 +30,8 @@ type Props = {
 
 export function DashboardScreen({ onLogout }: Props) {
   const navigation = useNavigation<any>();
+  const onlinePulseAnim = useRef(new Animated.Value(1)).current;
+  const loadingPulseAnim = useRef(new Animated.Value(1)).current;
   const [readings, setReadings] = useState<SensorReading[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [analyses, setAnalyses] = useState<AiAnalysis[]>([]);
@@ -73,6 +77,66 @@ export function DashboardScreen({ onLogout }: Props) {
     loadDashboard();
   }, []);
 
+  useEffect(() => {
+    if (apiStatus !== "Healthy") {
+      onlinePulseAnim.setValue(1);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(onlinePulseAnim, {
+          toValue: 1.06,
+          duration: 850,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(onlinePulseAnim, {
+          toValue: 1,
+          duration: 850,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [apiStatus, onlinePulseAnim]);
+
+  useEffect(() => {
+  if (!loading) {
+    loadingPulseAnim.setValue(1);
+    return;
+  }
+
+  const animation = Animated.loop(
+    Animated.sequence([
+      Animated.timing(loadingPulseAnim, {
+        toValue: 1.08,
+        duration: 750,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(loadingPulseAnim, {
+        toValue: 1,
+        duration: 750,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ])
+  );
+
+  animation.start();
+
+  return () => {
+    animation.stop();
+  };
+}, [loading, loadingPulseAnim]);
+
   const latestReading = useMemo(() => {
     if (readings.length === 0) {
       return null;
@@ -97,13 +161,34 @@ export function DashboardScreen({ onLogout }: Props) {
   }, [analyses]);
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
+  return (
+    <View style={styles.loadingContainer}>
+      <View style={styles.loadingCard}>
+        <Animated.View
+          style={[
+            styles.loadingIconBox,
+            {
+              transform: [{ scale: loadingPulseAnim }],
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="sprout"
+            size={34}
+            color={colors.primary}
+          />
+        </Animated.View>
+
         <ActivityIndicator color={colors.primary} size="large" />
-        <Text style={styles.loadingText}>Carregando painel...</Text>
+
+        <Text style={styles.loadingTitle}>Preparando seu painel</Text>
+        <Text style={styles.loadingText}>
+          Buscando leituras IoT, alertas e análises inteligentes da lavoura.
+        </Text>
       </View>
-    );
-  }
+    </View>
+  );
+}
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -153,14 +238,21 @@ export function DashboardScreen({ onLogout }: Props) {
             <View>
               <Text style={styles.heroLabel}>Saúde do sistema</Text>
               <Text style={styles.heroValue}>{apiStatus}</Text>
-            </View>
+          </View>
 
-            <View style={styles.onlinePill}>
-              <Ionicons name="pulse" size={14} color={colors.primaryDark} />
-              <Text style={styles.onlinePillText}>
-                {apiStatus === "Healthy" ? "Online" : "Verificar"}
-              </Text>
-            </View>
+            <Animated.View
+            style={[
+            styles.onlinePill,
+            apiStatus === "Healthy"
+          ? { transform: [{ scale: onlinePulseAnim }] }
+        : null,
+          ]}
+            >
+            <Ionicons name="pulse" size={14} color={colors.primaryDark} />
+            <Text style={styles.onlinePillText}>
+            {apiStatus === "Healthy" ? "Online" : "Verificar"}
+            </Text>
+          </Animated.View>
           </View>
 
           <Text style={styles.heroDescription}>
@@ -434,12 +526,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
+    padding: 24,
   },
   loadingText: {
-    marginTop: 12,
-    color: colors.muted,
-    fontSize: 15,
-  },
+  marginTop: 8,
+  color: colors.muted,
+  fontSize: 13,
+  lineHeight: 19,
+  textAlign: "center",
+},
   header: {
     marginTop: 18,
     marginBottom: 18,
@@ -788,4 +883,35 @@ profileBadgeText: {
     fontWeight: "900",
     color: colors.primaryDark,
   },
+  loadingCard: {
+  width: "100%",
+  maxWidth: 360,
+  backgroundColor: colors.surface,
+  borderRadius: 28,
+  padding: 26,
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: colors.border,
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 10 },
+  elevation: 5,
+},
+loadingIconBox: {
+  width: 72,
+  height: 72,
+  borderRadius: 999,
+  backgroundColor: colors.primaryLight,
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 18,
+},
+loadingTitle: {
+  marginTop: 14,
+  fontSize: 18,
+  fontWeight: "900",
+  color: colors.primaryDark,
+  textAlign: "center",
+},
 });

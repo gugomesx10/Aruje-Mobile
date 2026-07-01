@@ -1,4 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
@@ -21,6 +29,7 @@ type TemporalSummary = {
 
 export function ReadingsChartsSection({ readings }: ReadingsChartsSectionProps) {
   const navigation = useNavigation<any>();
+  const assistantPulseAnim = useRef(new Animated.Value(1)).current;
 
   const latestReadings = readings.slice(0, 8).reverse();
 
@@ -48,6 +57,31 @@ export function ReadingsChartsSection({ readings }: ReadingsChartsSectionProps) 
   ]);
 
   const temporalSummary = buildTemporalSummary(latestReadings);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(assistantPulseAnim, {
+          toValue: 1.1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(assistantPulseAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [assistantPulseAnim]);
 
   function handleAskAssistant() {
   navigation.navigate("RagAssistant", {
@@ -77,9 +111,16 @@ export function ReadingsChartsSection({ readings }: ReadingsChartsSectionProps) 
       </View>
 
        <Pressable style={styles.assistantActionCard} onPress={handleAskAssistant}>
-        <View style={styles.assistantActionIcon}>
-          <Ionicons name="sparkles" size={22} color="#FFFFFF" />
-        </View>
+        <Animated.View
+        style={[
+        styles.assistantActionIcon,
+        {
+          transform: [{ scale: assistantPulseAnim }],
+        },
+      ]}
+        >
+       <Ionicons name="sparkles" size={22} color="#FFFFFF" />
+      </Animated.View>
 
         <View style={styles.assistantActionTextBox}>
           <Text style={styles.assistantActionTitle}>
