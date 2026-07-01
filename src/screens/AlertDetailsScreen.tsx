@@ -19,11 +19,22 @@ type AlertDetailsRouteParams = {
 };
 
 export function AlertDetailsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<AlertDetailsRouteParams, "AlertDetails">>();
 
   const { alert } = route.params;
   const severity = getSeverityInfo(alert.severity);
+
+  function handleAskAssistant() {
+  navigation.navigate("RagAssistant", {
+    initialQuestion:
+      `Explique este alerta de forma simples e diga o que eu devo fazer agora. ` +
+      `Alerta: ${alert.title}. ` +
+      `Descrição: ${alert.description}. ` +
+      `Severidade: ${severity.label}. ` +
+      `Status: ${String(alert.status)}.`,
+  });
+}
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -67,6 +78,22 @@ export function AlertDetailsScreen() {
           <Text style={styles.cardTitle}>Descrição</Text>
           <Text style={styles.description}>{alert.description}</Text>
         </View>
+        <Pressable style={styles.assistantActionCard} onPress={handleAskAssistant}>
+        <View style={styles.assistantActionIcon}>
+          <Ionicons name="sparkles" size={22} color="#FFFFFF" />
+        </View>
+
+        <View style={styles.assistantActionTextBox}>
+          <Text style={styles.assistantActionTitle}>
+          Perguntar para Arujé IA
+          </Text>
+          <Text style={styles.assistantActionSubtitle}>
+          Receba uma explicação simples sobre este alerta e o que fazer agora.
+          </Text>
+        </View>
+
+          <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+        </Pressable>
 
         <View style={styles.grid}>
           <MetricCard
@@ -375,4 +402,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  assistantActionCard: {
+  backgroundColor: colors.primary,
+  borderRadius: 24,
+  padding: 16,
+  marginBottom: 14,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+  shadowColor: "#000",
+  shadowOpacity: 0.14,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 8,
+},
+assistantActionIcon: {
+  width: 44,
+  height: 44,
+  borderRadius: 999,
+  backgroundColor: "rgba(255,255,255,0.18)",
+  alignItems: "center",
+  justifyContent: "center",
+},
+assistantActionTextBox: {
+  flex: 1,
+},
+assistantActionTitle: {
+  color: "#FFFFFF",
+  fontSize: 15,
+  fontWeight: "900",
+},
+assistantActionSubtitle: {
+  marginTop: 3,
+  color: "rgba(255,255,255,0.84)",
+  fontSize: 12,
+  lineHeight: 17,
+  fontWeight: "700",
+},
 });
