@@ -1,9 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { SensorsScreen } from "../screens/SensorsScreen";
 import { DashboardScreen } from "../screens/DashboardScreen";
@@ -158,28 +165,63 @@ function TabsNavigator({ onLogout }: Props) {
 
 function FloatingAssistantButton() {
   const navigation = useNavigation<any>();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.04,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [pulseAnim]);
 
   function handleOpenAssistant() {
     navigation.navigate("RagAssistant");
   }
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      style={styles.floatingButton}
-      onPress={handleOpenAssistant}
+    <Animated.View
+      style={[
+        styles.floatingWrapper,
+        {
+          transform: [{ scale: pulseAnim }],
+        },
+      ]}
     >
-      <View style={styles.floatingIconBox}>
-        <Ionicons name="sparkles" size={22} color="#FFFFFF" />
-      </View>
+      <TouchableOpacity
+        activeOpacity={0.88}
+        style={styles.floatingButton}
+        onPress={handleOpenAssistant}
+      >
+        <View style={styles.floatingIconBox}>
+          <Ionicons name="sparkles" size={22} color="#FFFFFF" />
+        </View>
 
-      <View>
-        <Text style={styles.floatingTitle}>Arujé IA</Text>
-        <Text style={styles.floatingSubtitle}>Atendimento virtual</Text>
-      </View>
+        <View>
+          <Text style={styles.floatingTitle}>Arujé IA</Text>
+          <Text style={styles.floatingSubtitle}>Atendimento virtual</Text>
+        </View>
 
-      <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
-    </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -208,12 +250,14 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flex: 1,
   },
-  floatingButton: {
+    floatingWrapper: {
     position: "absolute",
     right: 18,
     bottom: 92,
     zIndex: 50,
     elevation: 20,
+  },
+  floatingButton: {
     backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 12,
