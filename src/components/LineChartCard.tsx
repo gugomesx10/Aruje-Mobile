@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Line, Polyline } from "react-native-svg";
+import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { colors } from "../theme/colors";
 
@@ -14,6 +14,8 @@ type LineChartCardProps = {
   data: ChartPoint[];
   suffix?: string;
 };
+
+type Trend = "up" | "down" | "stable";
 
 export function LineChartCard({
   title,
@@ -32,8 +34,9 @@ export function LineChartCard({
         <Text style={styles.subtitle}>{subtitle}</Text>
 
         <View style={styles.emptyBox}>
+          <Text style={styles.emptyTitle}>Dados insuficientes</Text>
           <Text style={styles.emptyText}>
-            Gere mais leituras IoT para visualizar este gráfico.
+            Gere mais leituras IoT para visualizar a evolução deste indicador.
           </Text>
         </View>
       </View>
@@ -41,13 +44,18 @@ export function LineChartCard({
   }
 
   const width = 300;
-  const height = 140;
-  const padding = 22;
+  const height = 150;
+  const padding = 24;
 
   const values = validData.map((item) => item.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
+
+  const first = validData[0];
+  const latest = validData[validData.length - 1];
+  const variation = latest.value - first.value;
+  const trend = getTrend(variation);
 
   const xStep =
     validData.length > 1
@@ -67,24 +75,36 @@ export function LineChartCard({
     };
   });
 
-  const polylinePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
-
-  const latest = validData[validData.length - 1];
+  const linePath = buildSmoothPath(points);
+  const areaPath = buildAreaPath(points, height, padding);
+  const latestPoint = points[points.length - 1];
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerText}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
 
         <View style={styles.badge}>
+          <Text style={styles.badgeLabel}>Último</Text>
           <Text style={styles.badgeText}>
-            {formatNumber(latest.value)}
-            {suffix}
+            {formatValue(latest.value, suffix)}
           </Text>
         </View>
+      </View>
+
+      <View style={styles.trendRow}>
+        <View style={[styles.trendPill, getTrendPillStyle(trend)]}>
+          <Text style={[styles.trendText, getTrendTextStyle(trend)]}>
+            {getTrendLabel(trend)}
+          </Text>
+        </View>
+
+        <Text style={styles.trendDescription}>
+          Variação de {formatSignedValue(variation, suffix)} nas últimas leituras.
+        </Text>
       </View>
 
       <View style={styles.chartBox}>
@@ -97,6 +117,7 @@ export function LineChartCard({
             stroke="#E5E0D2"
             strokeWidth="1"
           />
+
           <Line
             x1={padding}
             y1={height / 2}
@@ -105,6 +126,7 @@ export function LineChartCard({
             stroke="#E5E0D2"
             strokeWidth="1"
           />
+
           <Line
             x1={padding}
             y1={height - padding}
@@ -114,8 +136,14 @@ export function LineChartCard({
             strokeWidth="1"
           />
 
-          <Polyline
-            points={polylinePoints}
+          <Path
+            d={areaPath}
+            fill={colors.primary}
+            fillOpacity={0.08}
+          />
+
+          <Path
+            d={linePath}
             fill="none"
             stroke={colors.primary}
             strokeWidth="4"
@@ -123,55 +151,182 @@ export function LineChartCard({
             strokeLinejoin="round"
           />
 
-          {points.map((point, index) => (
-            <Circle
-              key={`${point.label}-${index}`}
-              cx={point.x}
-              cy={point.y}
-              r="4"
-              fill={colors.primaryDark}
-            />
-          ))}
+          {points.map((point, index) => {
+            const isLatest = index === points.length - 1;
+
+            return (
+              <Circle
+                key={`${point.label}-${index}`}
+                cx={point.x}
+                cy={point.y}
+                r={isLatest ? "6" : "4"}
+                fill={isLatest ? colors.primary : colors.primaryDark}
+                stroke={isLatest ? "#FFFFFF" : colors.primaryDark}
+                strokeWidth={isLatest ? "3" : "0"}
+              />
+            );
+          })}
+
+          <Circle
+            cx={latestPoint.x}
+            cy={latestPoint.y}
+            r="10"
+            fill={colors.primary}
+            fillOpacity={0.12}
+          />
         </Svg>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Mín: {formatNumber(min)}
-          {suffix}
-        </Text>
+        <View>
+          <Text style={styles.footerLabel}>Mínimo</Text>
+          <Text style={styles.footerText}>{formatValue(min, suffix)}</Text>
+        </View>
 
-        <Text style={styles.footerText}>
-          Máx: {formatNumber(max)}
-          {suffix}
-        </Text>
+        <View style={styles.footerCenter}>
+          <Text style={styles.footerLabel}>Máximo</Text>
+          <Text style={styles.footerText}>{formatValue(max, suffix)}</Text>
+        </View>
+
+        <View style={styles.footerRight}>
+          <Text style={styles.footerLabel}>Variação</Text>
+          <Text style={styles.footerText}>
+            {formatSignedValue(variation, suffix)}
+          </Text>
+        </View>
       </View>
     </View>
   );
 }
 
-function formatNumber(value: number) {
-  return Number(value.toFixed(1)).toString();
+function buildSmoothPath(points: Array<{ x: number; y: number }>) {
+  if (points.length === 0) {
+    return "";
+  }
+
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y}`;
+  }
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+
+    const controlX = (previous.x + current.x) / 2;
+
+    path += ` C ${controlX} ${previous.y}, ${controlX} ${current.y}, ${current.x} ${current.y}`;
+  }
+
+  return path;
+}
+
+function buildAreaPath(
+  points: Array<{ x: number; y: number }>,
+  height: number,
+  padding: number
+) {
+  if (points.length === 0) {
+    return "";
+  }
+
+  const bottomY = height - padding;
+  const first = points[0];
+  const last = points[points.length - 1];
+  const linePath = buildSmoothPath(points);
+
+  return `${linePath} L ${last.x} ${bottomY} L ${first.x} ${bottomY} Z`;
+}
+
+function getTrend(variation: number): Trend {
+  if (variation > 0.5) {
+    return "up";
+  }
+
+  if (variation < -0.5) {
+    return "down";
+  }
+
+  return "stable";
+}
+
+function getTrendLabel(trend: Trend) {
+  if (trend === "up") {
+    return "Subiu";
+  }
+
+  if (trend === "down") {
+    return "Caiu";
+  }
+
+  return "Estável";
+}
+
+function getTrendPillStyle(trend: Trend) {
+  if (trend === "up") {
+    return styles.trendWarning;
+  }
+
+  if (trend === "down") {
+    return styles.trendSuccess;
+  }
+
+  return styles.trendNeutral;
+}
+
+function getTrendTextStyle(trend: Trend) {
+  if (trend === "up") {
+    return styles.trendWarningText;
+  }
+
+  if (trend === "down") {
+    return styles.trendSuccessText;
+  }
+
+  return styles.trendNeutralText;
+}
+
+function formatValue(value: number, suffix: string) {
+  const formatted = Number(value.toFixed(1)).toString();
+
+  if (!suffix) {
+    return formatted;
+  }
+
+  if (suffix === "°C") {
+    return `${formatted}${suffix}`;
+  }
+
+  return `${formatted} ${suffix}`;
+}
+
+function formatSignedValue(value: number, suffix: string) {
+  const signal = value > 0 ? "+" : "";
+  return `${signal}${formatValue(value, suffix)}`;
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 26,
+    borderRadius: 28,
     padding: 18,
     marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 4,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
     fontSize: 17,
@@ -188,34 +343,107 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 18,
     alignSelf: "flex-start",
+    minWidth: 78,
+    alignItems: "center",
+  },
+  badgeLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: "800",
   },
   badgeText: {
+    marginTop: 2,
     color: colors.primaryDark,
     fontSize: 13,
     fontWeight: "900",
   },
-  chartBox: {
+  trendRow: {
     marginTop: 14,
-  },
-  footer: {
-    marginTop: 4,
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
   },
-  footerText: {
+  trendPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  trendText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  trendWarning: {
+    backgroundColor: "#FFFBEB",
+  },
+  trendWarningText: {
+    color: "#B45309",
+  },
+  trendSuccess: {
+    backgroundColor: "#ECFDF5",
+  },
+  trendSuccessText: {
+    color: "#047857",
+  },
+  trendNeutral: {
+    backgroundColor: "#F8FAFC",
+  },
+  trendNeutralText: {
+    color: "#475569",
+  },
+  trendDescription: {
+    flex: 1,
     color: colors.muted,
     fontSize: 12,
     fontWeight: "700",
   },
+  chartBox: {
+    marginTop: 14,
+    backgroundColor: "#FFFCF4",
+    borderRadius: 22,
+    paddingVertical: 4,
+    overflow: "hidden",
+  },
+  footer: {
+    marginTop: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  footerCenter: {
+    alignItems: "center",
+  },
+  footerRight: {
+    alignItems: "flex-end",
+  },
+  footerLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  footerText: {
+    marginTop: 3,
+    color: colors.primaryDark,
+    fontSize: 12,
+    fontWeight: "900",
+  },
   emptyBox: {
     marginTop: 16,
     backgroundColor: "#FAF8F1",
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTitle: {
+    color: colors.primaryDark,
+    fontSize: 14,
+    fontWeight: "900",
+    textAlign: "center",
   },
   emptyText: {
+    marginTop: 6,
     color: colors.muted,
     fontSize: 13,
     textAlign: "center",
