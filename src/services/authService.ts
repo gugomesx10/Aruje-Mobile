@@ -1,11 +1,11 @@
 import { api } from "./api";
-import { saveToken, saveUser } from "../storage/authStorage";
+import { saveToken, saveUser, UserRole } from "../storage/authStorage";
 
 export type LoginResponse = {
   userId: string;
   fullName: string;
   email: string;
-  role: number;
+  role: UserRole;
   token: string;
 };
 
