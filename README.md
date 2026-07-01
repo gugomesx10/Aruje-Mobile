@@ -11,13 +11,13 @@ O app foi desenvolvido com **React Native + Expo + TypeScript** e consome a API 
 Versão atual:
 
 ```text
-v1.0.3
+v1.0.7
 ```
 
 Status do projeto:
 
 ```text
-MVP funcional com integração mobile, IoT, alertas, análises IA e assistente RAG.
+MVP funcional com autenticação, RBAC, integração mobile, IoT, alertas, análises IA, assistente RAG, gráficos, análise temporal e microinterações visuais.
 ```
 
 Funcionalidades concluídas:
@@ -25,11 +25,17 @@ Funcionalidades concluídas:
 * Login com API
 * Autenticação JWT
 * Persistência de sessão
+* Controle de acesso por perfil: Admin, Manager e Operator
 * Dashboard com dados reais
+* Exibição do usuário logado e perfil no Dashboard
 * Tela de sensores
 * Tela de leituras IoT
+* Gráficos das leituras IoT
+* Resumo temporal das leituras
 * Tela de alertas
 * Tela de análises inteligentes
+* Telas de detalhes para leituras, alertas, análises e sensores
+* Integração dos detalhes com a Arujé IA
 * Navegação inferior
 * Configuração de URL por ambiente
 * Integração com o back-end Arujé
@@ -37,6 +43,11 @@ Funcionalidades concluídas:
 * Envio de histórico de conversa para o RAG
 * Exibição de fontes consultadas pelo RAG
 * Exibição de risco e recomendação quando houver análise agrícola
+* Botão flutuante da Arujé IA
+* Microinterações visuais
+* Loading premium no Dashboard e em Leituras
+* Refresh animado
+* Empty state melhorado em Leituras
 
 ---
 
@@ -50,13 +61,18 @@ A aplicação exibe:
 
 * Login com autenticação JWT
 * Sessão persistida
+* Controle de acesso por perfil
 * Painel principal com indicadores da lavoura
 * Saúde da API
+* Informações do usuário logado
 * Sensores cadastrados
 * Leituras IoT recentes
+* Gráficos e análise temporal das leituras
 * Alertas gerados automaticamente
 * Análises inteligentes com recomendação
+* Detalhes de leituras, alertas, análises e sensores
 * Assistente virtual agrícola com RAG
+* Microinterações visuais e loading premium
 * Navegação inferior entre telas
 
 ---
@@ -75,7 +91,11 @@ Enquanto o back-end recebe e processa os dados agrícolas, o mobile apresenta es
 * Alertas ativos
 * Análises inteligentes
 * Recomendações automáticas
+* Tendências das leituras IoT
+* Pior ponto recente da lavoura
+* Dados de mínimo, máximo e variação
 * Explicações em linguagem natural com a Arujé IA
+* Experiência diferenciada por perfil de usuário
 
 ---
 
@@ -121,6 +141,8 @@ Ele consome os dados já processados pela API e envia perguntas para o endpoint 
 * Bottom Tabs
 * AsyncStorage
 * Expo Vector Icons
+* React Native SVG
+* Animated API
 
 ### Integração
 
@@ -158,8 +180,51 @@ Funcionalidades da autenticação:
 * Envio de e-mail e senha para a API
 * Recebimento do token JWT
 * Salvamento do token no AsyncStorage
+* Salvamento dos dados do usuário autenticado
 * Sessão persistida mesmo ao atualizar ou reabrir o app
 * Logout com limpeza dos dados locais
+
+---
+
+### Controle de acesso por perfil
+
+A partir da versão `v1.0.4`, o aplicativo respeita os perfis retornados pelo back-end.
+
+Perfis disponíveis:
+
+```text
+Admin
+Manager
+Operator
+```
+
+Regras aplicadas no mobile:
+
+```text
+Admin
+→ Acesso completo às funcionalidades do aplicativo.
+
+Manager
+→ Acesso às áreas operacionais e de acompanhamento da lavoura.
+
+Operator
+→ Acesso focado em leituras, alertas, análises e Arujé IA.
+```
+
+A tela de sensores fica disponível apenas para perfis com permissão adequada.
+
+---
+
+### Experiência por perfil
+
+O Dashboard exibe informações do usuário autenticado:
+
+* Nome
+* E-mail
+* Perfil
+* Descrição do tipo de acesso
+
+Essa melhoria facilita a demonstração dos diferentes níveis de permissão da plataforma.
 
 ---
 
@@ -170,6 +235,8 @@ A tela principal exibe um resumo da lavoura inteligente.
 Ela mostra:
 
 * Saúde da API
+* Status online da API
+* Usuário logado e perfil de acesso
 * Temperatura mais recente
 * Umidade do ar
 * Umidade do solo
@@ -177,7 +244,10 @@ Ela mostra:
 * Total de leituras
 * Total de alertas
 * Total de análises IA
+* Atalho para análise temporal
 * Última análise inteligente gerada
+
+A partir da versão `v1.0.7`, o status online possui microinteração visual quando a API está saudável.
 
 ---
 
@@ -208,6 +278,24 @@ Cada leitura pode conter:
 * Luminosidade
 * Data e horário da leitura
 * Indicação visual se a leitura está normal ou em risco
+
+A partir da versão `v1.0.6`, a tela também possui análise temporal e gráficos.
+
+Recursos visuais da tela:
+
+* Resumo temporal das últimas leituras
+* Tendência de temperatura
+* Tendência de umidade do solo
+* Última leitura normal ou em risco
+* Pior ponto recente
+* Gráfico de temperatura
+* Gráfico de umidade do ar
+* Gráfico de umidade do solo
+* Gráfico de luminosidade
+* Valores de mínimo, máximo e variação
+* Último ponto destacado no gráfico
+
+Também é possível perguntar para a Arujé IA sobre a evolução das leituras.
 
 ---
 
@@ -268,6 +356,30 @@ O que eu devo fazer agora?
 Explique de forma simples o que aconteceu.
 Estou com dificuldade de entender os alertas, pode me ajudar?
 ```
+
+---
+
+### Integração dos detalhes com a Arujé IA
+
+A partir da versão `v1.0.5`, as telas de detalhes foram conectadas ao assistente virtual.
+
+Fluxos disponíveis:
+
+```text
+Detalhe de alerta
+→ Perguntar para Arujé IA sobre o alerta
+
+Detalhe de análise
+→ Perguntar para Arujé IA sobre a recomendação
+
+Detalhe de leitura
+→ Perguntar para Arujé IA sobre a leitura IoT
+
+Tela de leituras
+→ Perguntar para Arujé IA sobre a evolução temporal
+```
+
+O app abre o chat com uma pergunta contextual pronta, facilitando a explicação dos dados para o usuário.
 
 ---
 
@@ -411,6 +523,10 @@ Quando a resposta é apenas conversacional, como `oi` ou `me ajuda`, o mobile ex
 ```text
 Aruje-Mobile/
 ├── src/
+│   ├── components/
+│   │   ├── LineChartCard.tsx
+│   │   └── ReadingsChartsSection.tsx
+│   │
 │   ├── config/
 │   │   └── apiConfig.ts
 │   │
@@ -421,9 +537,13 @@ Aruje-Mobile/
 │   │   ├── LoginScreen.tsx
 │   │   ├── DashboardScreen.tsx
 │   │   ├── SensorsScreen.tsx
+│   │   ├── SensorDetailsScreen.tsx
 │   │   ├── ReadingsScreen.tsx
+│   │   ├── ReadingDetailsScreen.tsx
 │   │   ├── AlertsScreen.tsx
+│   │   ├── AlertDetailsScreen.tsx
 │   │   ├── AnalysesScreen.tsx
+│   │   ├── AnalysisDetailsScreen.tsx
 │   │   └── RagAssistantScreen.tsx
 │   │
 │   ├── services/
@@ -638,12 +758,21 @@ Authorization: Bearer {token}
 
 ---
 
-## Usuário de demonstração
+## Usuários de demonstração
 
 Quando o back-end está com seed de demonstração habilitado, é possível utilizar:
 
 ```text
+Admin
 E-mail: gustavo@aruje.com
+Senha: Aruje123@
+
+Manager
+E-mail: manager@aruje.com
+Senha: Aruje123@
+
+Operator
+E-mail: operator@aruje.com
 Senha: Aruje123@
 ```
 
@@ -712,6 +841,7 @@ Resumo geral da lavoura inteligente.
 Exibe:
 
 * Saúde da API
+* Usuário logado e perfil de acesso
 * Última temperatura
 * Última umidade do ar
 * Última umidade do solo
@@ -719,6 +849,7 @@ Exibe:
 * Total de leituras
 * Total de alertas
 * Total de análises IA
+* Atalho para análise temporal
 * Última recomendação inteligente
 
 ---
@@ -727,11 +858,35 @@ Exibe:
 
 Lista os sensores cadastrados na plataforma.
 
+A aba é exibida apenas para perfis com permissão adequada.
+
+---
+
+### Detalhe de sensor
+
+Exibe informações completas de um sensor cadastrado.
+
 ---
 
 ### Leituras
 
-Lista as leituras IoT recebidas.
+Lista as leituras IoT recebidas e exibe gráficos com análise temporal.
+
+A tela mostra:
+
+* Cards de leitura
+* Status normal ou risco
+* Gráficos de evolução
+* Mínimo, máximo e variação
+* Botão para perguntar para a Arujé IA sobre a evolução das leituras
+
+---
+
+### Detalhe de leitura
+
+Exibe os dados completos de uma leitura IoT.
+
+A tela possui integração com a Arujé IA para explicar a leitura e indicar possíveis riscos.
 
 ---
 
@@ -741,9 +896,25 @@ Lista os alertas gerados automaticamente pelo Worker.
 
 ---
 
+### Detalhe de alerta
+
+Exibe informações completas do alerta.
+
+A tela possui integração com a Arujé IA para explicar o alerta e sugerir próximas ações.
+
+---
+
 ### Análises
 
 Lista as análises inteligentes e recomendações geradas a partir dos alertas.
+
+---
+
+### Detalhe de análise
+
+Exibe detalhes da análise inteligente.
+
+A tela possui integração com a Arujé IA para explicar a recomendação.
 
 ---
 
@@ -757,10 +928,9 @@ Permite perguntar em linguagem natural sobre:
 * Riscos da lavoura
 * Sensores
 * Leituras recentes
+* Evolução temporal
 * Recomendações
 * Próximas ações
-
----
 
 ## Visual e identidade
 
@@ -775,6 +945,20 @@ Principais características:
 * Ícones temáticos
 * Interface focada em leitura rápida dos dados
 * Chat com visual amigável e acessível
+* Gráficos com visual leve e limpo
+* Microinterações sutis
+* Loading premium
+* Botões com feedback visual
+
+A partir da versão `v1.0.7`, o app recebeu melhorias de experiência visual, incluindo:
+
+* Botão flutuante da Arujé IA com pulso leve
+* Status Online do Dashboard pulsando quando a API está saudável
+* Ícone do botão “Perguntar para Arujé IA” com pulso sutil
+* Loading premium no Dashboard
+* Loading premium na tela de Leituras
+* Botão Atualizar girando enquanto carrega
+* Empty state melhorado na tela de Leituras
 
 ---
 
@@ -926,6 +1110,41 @@ A resposta deve considerar o histórico recente da conversa.
 
 ---
 
+### Teste 8 — Perfis de acesso
+
+1. Entrar com o usuário Admin
+2. Confirmar que a aba Sensores aparece
+3. Fazer logout
+4. Entrar com o usuário Manager
+5. Confirmar que a aba Sensores aparece
+6. Fazer logout
+7. Entrar com o usuário Operator
+8. Confirmar que a aba Sensores não aparece
+9. Confirmar que Leituras, Alertas, Análises e Arujé IA continuam disponíveis
+
+---
+
+### Teste 9 — Análise temporal
+
+1. Abrir a tela Leituras
+2. Confirmar que o resumo temporal aparece
+3. Conferir gráficos de temperatura, umidade do ar, umidade do solo e luminosidade
+4. Conferir mínimo, máximo e variação
+5. Clicar em “Perguntar para Arujé IA”
+6. Confirmar que o chat abre com uma pergunta contextual sobre evolução temporal
+
+---
+
+### Teste 10 — Microinterações
+
+1. Confirmar o botão flutuante da Arujé IA pulsando
+2. Confirmar o status Online pulsando no Dashboard
+3. Confirmar o loading premium no Dashboard
+4. Confirmar o loading premium na tela de Leituras
+5. Confirmar o botão Atualizar girando durante carregamento
+
+---
+
 ## Git Flow
 
 O projeto segue um fluxo baseado em branches:
@@ -971,9 +1190,9 @@ Exemplo de criação de release:
 ```bash
 git checkout develop
 git pull origin develop
-git checkout -b release/v1.0.3
+git checkout -b release/v1.0.7
 npx tsc --noEmit
-git push origin release/v1.0.3
+git push origin release/v1.0.7
 ```
 
 Merge na main:
@@ -981,14 +1200,14 @@ Merge na main:
 ```bash
 git checkout main
 git pull origin main
-git merge --no-ff release/v1.0.3 -m "release: v1.0.3 mobile"
+git merge --no-ff release/v1.0.7 -m "release: v1.0.7 mobile"
 git push origin main
 ```
 
 Criar tag:
 
 ```bash
-git tag -a v1.0.3 -m "v1.0.3 - Mobile com historico de conversa no RAG"
+git tag -a v1.0.3 -m "v1.0.7 - Experiencia visual e microinteracoes"
 git push origin v1.0.3
 ```
 
@@ -996,13 +1215,69 @@ Voltar a release para develop:
 
 ```bash
 git checkout develop
-git merge --no-ff release/v1.0.3 -m "merge: release v1.0.3 em develop"
+git merge --no-ff release/v1.0.7 -m "merge: release v1.0.3 em develop"
 git push origin develop
 ```
 
 ---
 
 ## Histórico de versões
+
+### v1.0.7
+
+Principais entregas:
+
+* Botão flutuante da Arujé IA com pulso leve
+* Status Online do Dashboard pulsando quando a API está saudável
+* Ícone do botão “Perguntar para Arujé IA” com microanimação
+* Loading premium no Dashboard
+* Loading premium na tela de Leituras
+* Botão Atualizar girando enquanto carrega
+* Empty state melhorado na tela de Leituras
+* Refinamento geral da experiência visual do app
+
+### v1.0.6
+
+Principais entregas:
+
+* Gráficos das leituras IoT
+* Resumo temporal das últimas leituras
+* Tendência de temperatura
+* Tendência de umidade do solo
+* Identificação da última leitura como normal ou em risco
+* Identificação do pior ponto recente
+* Gráficos com linha suavizada
+* Área preenchida abaixo dos gráficos
+* Último ponto destacado
+* Exibição de mínimo, máximo e variação
+* Correção da luminosidade para unidade `lux`
+* Botão para perguntar para a Arujé IA sobre a evolução das leituras
+* Card no Dashboard apontando para a análise temporal
+
+### v1.0.5
+
+Principais entregas:
+
+* Telas de detalhes conectadas com a Arujé IA
+* Detalhe de alerta com pergunta contextual para o assistente
+* Detalhe de análise com pergunta contextual para o assistente
+* Detalhe de leitura com pergunta contextual para o assistente
+* Chat aceitando pergunta inicial por parâmetro de navegação
+* Dashboard exibindo usuário logado
+* Dashboard exibindo perfil do usuário
+* Experiência diferenciada por perfil
+
+### v1.0.4
+
+Principais entregas:
+
+* Controle de acesso por perfil no mobile
+* Suporte aos perfis Admin, Manager e Operator
+* Persistência dos dados do usuário autenticado
+* Exibição condicional da aba Sensores
+* Operador sem acesso à tela de sensores
+* Ajustes de navegação conforme perfil
+* Integração com RBAC do back-end
 
 ### v1.0.3
 
@@ -1143,23 +1418,21 @@ Se a Gemini falhar, o back-end pode responder usando fallback.
 
 Possíveis melhorias futuras:
 
-* Tela de detalhes de um sensor
-* Tela de detalhes de uma leitura
-* Filtros por período
-* Filtros por severidade
-* Gráficos no mobile
-* Pull to refresh
-* Refresh automático
+* README final do back-end
+* Documentação completa da arquitetura
+* Roteiro de demonstração
+* Prints das telas no README
 * Splash screen personalizada
 * Ícone do app
 * Tema escuro
-* Deploy mobile com EAS
-* Build Android
-* Build iOS
+* Pull to refresh nativo
 * Histórico persistido do chat
 * Sugestões inteligentes no chat
-* Filtros no chat por período ou sensor
+* Filtros por período nas leituras
+* Filtros por severidade nos alertas
 * Tela de detalhes das fontes usadas pelo RAG
+* Build Android com EAS
+* Build iOS com EAS
 
 ---
 
