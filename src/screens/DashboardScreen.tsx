@@ -18,7 +18,7 @@ import {
   getSensorReadings,
   SensorReading,
 } from "../services/dashboardService";
-import { clearAuth } from "../storage/authStorage";
+import { AuthUser, clearAuth, getUser, UserRoles } from "../storage/authStorage";
 import { colors } from "../theme/colors";
 
 type Props = {
@@ -31,6 +31,12 @@ export function DashboardScreen({ onLogout }: Props) {
   const [analyses, setAnalyses] = useState<AiAnalysis[]>([]);
   const [apiStatus, setApiStatus] = useState("Carregando...");
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  async function loadCurrentUser() {
+  const user = await getUser();
+  setCurrentUser(user);
+}
 
   async function loadDashboard() {
     try {
@@ -61,6 +67,7 @@ export function DashboardScreen({ onLogout }: Props) {
   }
 
   useEffect(() => {
+    loadCurrentUser();
     loadDashboard();
   }, []);
 
@@ -102,7 +109,9 @@ export function DashboardScreen({ onLogout }: Props) {
         <View style={styles.header}>
           <View style={styles.headerText}>
             <Text style={styles.eyebrow}>Arujé Mobile</Text>
-            <Text style={styles.title}>Olá, Produtor!</Text>
+            <Text style={styles.title}>
+              Olá, {getFirstName(currentUser?.fullName) || "Produtor"}!
+            </Text>
             <Text style={styles.subtitle}>
               Resumo inteligente da sua lavoura.
             </Text>
@@ -112,6 +121,30 @@ export function DashboardScreen({ onLogout }: Props) {
             <Ionicons name="log-out-outline" size={22} color={colors.primary} />
           </Pressable>
         </View>
+
+        {currentUser ? (
+        <View style={styles.profileCard}>
+          <View style={styles.profileAvatar}>
+            <Text style={styles.profileAvatarText}>
+              {getInitials(currentUser.fullName)}
+            </Text>
+          </View>
+
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{currentUser.fullName}</Text>
+            <Text style={styles.profileEmail}>{currentUser.email}</Text>
+            <Text style={styles.profileDescription}>
+              {getRoleDescription(currentUser.role)}
+            </Text>
+          </View>
+
+          <View style={styles.profileBadge}>
+            <Text style={styles.profileBadgeText}>
+              {getRoleLabel(currentUser.role)}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
@@ -256,6 +289,62 @@ function SummaryCard({ label, value }: SummaryCardProps) {
       <Text style={styles.summaryLabel}>{label}</Text>
     </View>
   );
+}
+
+function getFirstName(fullName?: string) {
+  if (!fullName) {
+    return "";
+  }
+
+  return fullName.trim().split(" ")[0];
+}
+
+function getInitials(fullName: string) {
+  const names = fullName
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+
+  if (names.length === 0) {
+    return "AR";
+  }
+
+  const first = names[0]?.[0] ?? "";
+  const last = names.length > 1 ? names[names.length - 1]?.[0] ?? "" : "";
+
+  return `${first}${last}`.toUpperCase();
+}
+
+function getRoleLabel(role?: number) {
+  if (role === UserRoles.Admin) {
+    return "Admin";
+  }
+
+  if (role === UserRoles.Manager) {
+    return "Manager";
+  }
+
+  if (role === UserRoles.Operator) {
+    return "Operator";
+  }
+
+  return "Usuário";
+}
+
+function getRoleDescription(role?: number) {
+  if (role === UserRoles.Admin) {
+    return "Acesso administrativo completo à plataforma.";
+  }
+
+  if (role === UserRoles.Manager) {
+    return "Acompanha e gerencia a operação agrícola.";
+  }
+
+  if (role === UserRoles.Operator) {
+    return "Acompanha leituras, alertas e recomendações da lavoura.";
+  }
+
+  return "Usuário autenticado na plataforma.";
 }
 
 function formatValue(value?: number | null, suffix?: string) {
@@ -558,4 +647,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  profileCard: {
+  backgroundColor: "#FFFFFF",
+  borderRadius: 24,
+  padding: 16,
+  marginBottom: 14,
+  borderWidth: 1,
+  borderColor: colors.border,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+},
+profileAvatar: {
+  width: 48,
+  height: 48,
+  borderRadius: 999,
+  backgroundColor: colors.primary,
+  alignItems: "center",
+  justifyContent: "center",
+},
+profileAvatarText: {
+  color: "#FFFFFF",
+  fontSize: 16,
+  fontWeight: "900",
+},
+profileInfo: {
+  flex: 1,
+},
+profileName: {
+  fontSize: 15,
+  fontWeight: "900",
+  color: colors.primaryDark,
+},
+profileEmail: {
+  marginTop: 2,
+  fontSize: 12,
+  fontWeight: "700",
+  color: colors.muted,
+},
+profileDescription: {
+  marginTop: 5,
+  fontSize: 12,
+  lineHeight: 17,
+  fontWeight: "600",
+  color: "#475569",
+},
+profileBadge: {
+  backgroundColor: colors.primaryLight,
+  borderRadius: 999,
+  paddingHorizontal: 11,
+  paddingVertical: 7,
+},
+profileBadgeText: {
+  fontSize: 11,
+  fontWeight: "900",
+  color: colors.primaryDark,
+},
 });
