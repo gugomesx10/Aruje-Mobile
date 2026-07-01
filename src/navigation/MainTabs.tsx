@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -14,6 +15,7 @@ import { ReadingDetailsScreen } from "../screens/ReadingDetailsScreen";
 import { AlertDetailsScreen } from "../screens/AlertDetailsScreen";
 import { AnalysisDetailsScreen } from "../screens/AnalysisDetailsScreen";
 import { SensorDetailsScreen } from "../screens/SensorDetailsScreen";
+import { AuthUser, getUser, UserRoles } from "../storage/authStorage";
 import { colors } from "../theme/colors";
 
 const Tab = createBottomTabNavigator();
@@ -24,6 +26,31 @@ type Props = {
 };
 
 function TabsNavigator({ onLogout }: Props) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadUser() {
+      const storedUser = await getUser();
+
+      if (isMounted) {
+        setUser(storedUser);
+      }
+    }
+
+    loadUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const userRole = user?.role;
+
+  const canSeeSensors =
+    userRole === UserRoles.Admin || userRole === UserRoles.Manager;
+
   return (
     <View style={styles.tabsContainer}>
       <Tab.Navigator
@@ -65,19 +92,21 @@ function TabsNavigator({ onLogout }: Props) {
           {() => <DashboardScreen onLogout={onLogout} />}
         </Tab.Screen>
 
-        <Tab.Screen
-          name="Sensores"
-          component={SensorsScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <MaterialCommunityIcons
-                name="access-point-network"
-                color={color}
-                size={size}
-              />
-            ),
-          }}
-        />
+        {canSeeSensors ? (
+          <Tab.Screen
+            name="Sensores"
+            component={SensorsScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons
+                  name="access-point-network"
+                  color={color}
+                  size={size}
+                />
+              ),
+            }}
+          />
+        ) : null}
 
         <Tab.Screen
           name="Leituras"
