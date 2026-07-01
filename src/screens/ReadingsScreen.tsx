@@ -1,6 +1,8 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +21,8 @@ import { colors } from "../theme/colors";
 
 export function ReadingsScreen() {
   const navigation = useNavigation<any>();
+  const loadingPulseAnim = useRef(new Animated.Value(1)).current;
+  const refreshRotateAnim = useRef(new Animated.Value(0)).current;
 
   const [readings, setReadings] = useState<SensorReading[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +44,65 @@ export function ReadingsScreen() {
   }
 
   useEffect(() => {
-    loadReadings();
-  }, []);
+  loadReadings();
+}, []);
+
+useEffect(() => {
+  if (!loading) {
+    loadingPulseAnim.setValue(1);
+    return;
+  }
+
+  const animation = Animated.loop(
+    Animated.sequence([
+      Animated.timing(loadingPulseAnim, {
+        toValue: 1.08,
+        duration: 750,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(loadingPulseAnim, {
+        toValue: 1,
+        duration: 750,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ])
+  );
+
+  animation.start();
+
+  return () => {
+    animation.stop();
+  };
+}, [loading, loadingPulseAnim]);
+
+useEffect(() => {
+  if (!loading) {
+    refreshRotateAnim.setValue(0);
+    return;
+  }
+
+  const animation = Animated.loop(
+    Animated.timing(refreshRotateAnim, {
+      toValue: 1,
+      duration: 900,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    })
+  );
+
+  animation.start();
+
+  return () => {
+    animation.stop();
+  };
+}, [loading, refreshRotateAnim]);
+
+  const refreshRotation = refreshRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -55,29 +116,67 @@ export function ReadingsScreen() {
             </Text>
           </View>
 
-          <Pressable style={styles.refreshButton} onPress={loadReadings}>
-            <Ionicons name="refresh" size={18} color="#FFFFFF" />
-          </Pressable>
+          <Pressable
+            style={styles.refreshButton}
+            onPress={loadReadings}
+            disabled={loading}
+          >
+          <Animated.View
+            style={{
+            transform: [{ rotate: refreshRotation }],
+          }}
+        >
+          <Ionicons name="refresh" size={18} color="#FFFFFF" />
+        </Animated.View>
+        </Pressable>
         </View>
 
         {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={styles.loadingText}>Carregando leituras...</Text>
-          </View>
-        ) : readings.length === 0 ? (
+      <View style={styles.loadingBox}>
+          <Animated.View
+          style={[
+          styles.loadingIconBox,
+          {
+          transform: [{ scale: loadingPulseAnim }],
+          },
+          ]}
+        >
+        <MaterialCommunityIcons
+        name="access-point-network"
+        size={34}
+        color={colors.primary}
+          />
+          </Animated.View>
+
+          <ActivityIndicator color={colors.primary} size="large" />
+
+          <Text style={styles.loadingTitle}>Carregando leituras</Text>
+          <Text style={styles.loadingText}>
+          Buscando os últimos dados enviados pelos sensores IoT.
+          </Text>
+        </View>
+    ) : readings.length === 0 ? (
           <View style={styles.emptyCard}>
-            <MaterialCommunityIcons
-              name="sprout"
-              size={34}
-              color={colors.primary}
-            />
-            <Text style={styles.emptyTitle}>Nenhuma leitura encontrada</Text>
-            <Text style={styles.emptyText}>
-              Rode o Wokwi para gerar dados de temperatura, umidade e
-              luminosidade.
-            </Text>
+          <View style={styles.emptyIconBox}>
+          <MaterialCommunityIcons
+            name="sprout"
+            size={38}
+            color={colors.primary}
+          />
           </View>
+
+          <Text style={styles.emptyTitle}>Nenhuma leitura encontrada</Text>
+
+          <Text style={styles.emptyText}>
+          Rode o Wokwi para enviar dados de temperatura, umidade do ar,
+          umidade do solo e luminosidade para o Arujé.
+          </Text>
+
+        <Pressable style={styles.emptyActionButton} onPress={loadReadings}>
+        <Ionicons name="refresh" size={17} color="#FFFFFF" />
+        <Text style={styles.emptyActionText}>Buscar novamente</Text>
+        </Pressable>
+      </View>
         ) : (
           <>
             <ReadingsChartsSection readings={readings} />
@@ -302,37 +401,74 @@ const styles = StyleSheet.create({
   },
   loadingBox: {
     backgroundColor: colors.surface,
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 28,
+    padding: 26,
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 5,
   },
   loadingText: {
-    marginTop: 12,
-    color: colors.muted,
-    fontSize: 14,
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 26,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-  },
-  emptyTitle: {
-    marginTop: 12,
-    fontSize: 18,
-    fontWeight: "900",
-    color: colors.text,
-  },
-  emptyText: {
     marginTop: 8,
     color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: "center",
-    lineHeight: 20,
   },
+  emptyCard: {
+  backgroundColor: colors.surface,
+  borderRadius: 28,
+  padding: 26,
+  borderWidth: 1,
+  borderColor: colors.border,
+  alignItems: "center",
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 10 },
+  elevation: 5,
+},
+emptyIconBox: {
+  width: 76,
+  height: 76,
+  borderRadius: 999,
+  backgroundColor: colors.primaryLight,
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 16,
+},
+  emptyTitle: {
+  fontSize: 18,
+  fontWeight: "900",
+  color: colors.primaryDark,
+  textAlign: "center",
+},
+  emptyText: {
+  marginTop: 8,
+  color: colors.muted,
+  fontSize: 13,
+  lineHeight: 19,
+  textAlign: "center",
+},
+emptyActionButton: {
+  marginTop: 18,
+  backgroundColor: colors.primary,
+  borderRadius: 999,
+  paddingHorizontal: 16,
+  paddingVertical: 11,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+},
+emptyActionText: {
+  color: "#FFFFFF",
+  fontSize: 13,
+  fontWeight: "900",
+},
   card: {
     backgroundColor: colors.surface,
     borderRadius: 26,
@@ -429,5 +565,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     fontWeight: "900",
+  },
+  loadingIconBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  loadingTitle: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: "900",
+    color: colors.primaryDark,
+    textAlign: "center",
   },
 });
