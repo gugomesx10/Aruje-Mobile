@@ -20,13 +20,27 @@ type ReadingDetailsRouteParams = {
 };
 
 export function ReadingDetailsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route =
     useRoute<RouteProp<ReadingDetailsRouteParams, "ReadingDetails">>();
 
   const { reading, title } = route.params;
 
   const critical = isCritical(reading);
+
+
+  function handleAskAssistant() {
+  navigation.navigate("RagAssistant", {
+    initialQuestion:
+      `Explique esta leitura IoT de forma simples e diga se existe risco para a lavoura. ` +
+      `Leitura: ${title}. ` +
+      `Temperatura: ${formatValue(reading.temperature, "°C")}. ` +
+      `Umidade do ar: ${formatValue(reading.airHumidity, "%")}. ` +
+      `Umidade do solo: ${formatValue(reading.soilMoisture, "%")}. ` +
+      `Luminosidade: ${formatValue(reading.luminosity, "lux")}. ` +
+      `Status identificado no app: ${critical ? "risco detectado" : "condição normal"}.`,
+  });
+}
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -64,6 +78,23 @@ export function ReadingDetailsScreen() {
             </Text>
           </View>
         </View>
+
+        <Pressable style={styles.assistantActionCard} onPress={handleAskAssistant}>
+          <View style={styles.assistantActionIcon}>
+            <Ionicons name="sparkles" size={22} color="#FFFFFF" />
+          </View>
+
+          <View style={styles.assistantActionTextBox}>
+            <Text style={styles.assistantActionTitle}>
+            Perguntar para Arujé IA
+            </Text>
+            <Text style={styles.assistantActionSubtitle}>
+            Peça uma explicação simples sobre esta leitura e possíveis riscos.
+            </Text>
+          </View>
+
+          <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+        </Pressable>
 
         <View style={styles.grid}>
           <MetricCard
@@ -338,4 +369,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  assistantActionCard: {
+  backgroundColor: colors.primary,
+  borderRadius: 24,
+  padding: 16,
+  marginBottom: 14,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+  shadowColor: "#000",
+  shadowOpacity: 0.14,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 8,
+},
+assistantActionIcon: {
+  width: 44,
+  height: 44,
+  borderRadius: 999,
+  backgroundColor: "rgba(255,255,255,0.18)",
+  alignItems: "center",
+  justifyContent: "center",
+},
+assistantActionTextBox: {
+  flex: 1,
+},
+assistantActionTitle: {
+  color: "#FFFFFF",
+  fontSize: 15,
+  fontWeight: "900",
+},
+assistantActionSubtitle: {
+  marginTop: 3,
+  color: "rgba(255,255,255,0.84)",
+  fontSize: 12,
+  lineHeight: 17,
+  fontWeight: "700",
+},
 });

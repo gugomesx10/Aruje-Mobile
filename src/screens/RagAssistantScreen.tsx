@@ -11,7 +11,11 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import {
+  RouteProp,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
 
 import {
   askRagAssistant,
@@ -53,8 +57,15 @@ const SUGGESTED_QUESTIONS = [
   "O que eu devo fazer agora?",
 ];
 
+type RagAssistantRouteParams = {
+  RagAssistant: {
+    initialQuestion?: string;
+  };
+};
+
 export function RagAssistantScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<RagAssistantRouteParams, "RagAssistant">>();
   const scrollRef = useRef<ScrollView | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
@@ -66,6 +77,14 @@ export function RagAssistantScreen() {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, [messages, loading]);
+
+  useEffect(() => {
+    const initialQuestion = route.params?.initialQuestion?.trim();
+
+    if (initialQuestion) {
+      setQuestion(initialQuestion);
+    }
+  }, [route.params?.initialQuestion]);
 
   async function handleAsk(customQuestion?: string) {
   const selectedQuestion = (customQuestion ?? question).trim();
