@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 import {
   AiAnalysis,
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function DashboardScreen({ onLogout }: Props) {
+  const navigation = useNavigation<any>();
   const [readings, setReadings] = useState<SensorReading[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [analyses, setAnalyses] = useState<AiAnalysis[]>([]);
@@ -217,6 +219,36 @@ export function DashboardScreen({ onLogout }: Props) {
           <SummaryCard label="Alertas" value={alerts.length.toString()} />
           <SummaryCard label="Análises IA" value={analyses.length.toString()} />
         </View>
+
+        <Pressable
+          style={styles.temporalCard}
+          onPress={() => navigation.navigate("Leituras")}
+        >
+          <View style={styles.temporalIcon}>
+            <MaterialCommunityIcons
+              name="chart-line"
+              size={24}
+              color={colors.primary}
+            />
+          </View>
+
+          <View style={styles.temporalContent}>
+            <Text style={styles.temporalTitle}>Análise temporal</Text>
+            <Text style={styles.temporalText}>
+              Veja a evolução das últimas leituras IoT, tendências e pontos de
+              atenção da lavoura.
+            </Text>
+          </View>
+
+          <View style={styles.temporalAction}>
+            <Text style={styles.temporalActionText}>Ver</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={colors.primaryDark}
+            />
+          </View>
+        </Pressable>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Última análise com IA</Text>
@@ -703,4 +735,57 @@ profileBadgeText: {
   fontWeight: "900",
   color: colors.primaryDark,
 },
+  temporalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+  },
+  temporalIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  temporalContent: {
+    flex: 1,
+  },
+  temporalTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: colors.primaryDark,
+  },
+  temporalText: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600",
+    color: colors.muted,
+  },
+  temporalAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  temporalActionText: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: colors.primaryDark,
+  },
 });
